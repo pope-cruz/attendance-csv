@@ -1,0 +1,22 @@
+# dependencies
+/node_modules
+
+# Next.js
+/.next
+/out
+
+# test coverage
+/coverage
+
+# local environment files
+.env*
+
+# local attendance exports
+/comma-separated values.csv
+
+# operating system and editor files
+.DS_Store
+*.swp
+
+# TypeScript
+*.tsbuildinfo

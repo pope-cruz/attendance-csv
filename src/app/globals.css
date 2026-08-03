@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #333333;
+  --slate: #535768;
+  --muted: #626678;
+  --iron: #737789;
+  --border: #dfe1ea;
+  --border-strong: #cacdde;
+  --cloud: #f5f6f8;
+  --action: #6161ff;
+  --action-hover: #5151e8;
+  --action-ring: rgb(97 97 255 / 0.14);
+  --mint: #d9ffc0;
+  --sky: #d4f7ff;
+  --lavender: #eddff7;
+  --periwinkle: #f0f2ff;
+  --success-bg: #e8f7df;
+  --success-text: #275c32;
+  --error-bg: #fdebec;
+  --error-text: #8d2d32;
+  --shadow-card: 0 2px 48px rgb(205 208 223 / 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Poppins, "Avenir Next", Avenir, "Helvetica Neue", Helvetica,
+    sans-serif;
+  font-weight: 400;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+label[for] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #dbdbff;
+}
+
+a:focus-visible,
+button:focus-visible,
+label[for]:focus-visible {
+  outline: 3px solid var(--action-ring);
+  outline-offset: 3px;
+}
