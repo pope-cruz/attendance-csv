@@ -28,6 +28,7 @@ export interface LumaAttendee {
   approvalStatus?: string;
   registrationStatus?: string;
   checkInTime?: string;
+  checkedIn?: string;
   ticketType?: string;
 }
 

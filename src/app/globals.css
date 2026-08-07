@@ -1,27 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #f5f6f8;
+  --canvas: #f7f7f8;
   --surface: #ffffff;
-  --ink: #333333;
-  --slate: #535768;
-  --muted: #626678;
-  --iron: #737789;
-  --border: #dfe1ea;
-  --border-strong: #cacdde;
-  --cloud: #f5f6f8;
-  --action: #6161ff;
-  --action-hover: #5151e8;
-  --action-ring: rgb(97 97 255 / 0.14);
-  --mint: #d9ffc0;
-  --sky: #d4f7ff;
-  --lavender: #eddff7;
-  --periwinkle: #f0f2ff;
-  --success-bg: #e8f7df;
-  --success-text: #275c32;
-  --error-bg: #fdebec;
-  --error-text: #8d2d32;
-  --shadow-card: 0 2px 48px rgb(205 208 223 / 0.3);
+  --ink: #19191d;
+  --slate: #45444d;
+  --muted: #5f5e68;
+  --iron: #6b6974;
+  --border: #dedde3;
+  --border-strong: #b9b7c0;
+  --subtle: #f1f1f3;
+  --action: #3d37a6;
+  --action-hover: #302b87;
+  --action-soft: #efeffb;
+  --action-ring: rgb(61 55 166 / 0.2);
+  --success-bg: #edf7ee;
+  --success-text: #24572c;
+  --error-bg: #fff0f0;
+  --error-border: #e6bfc2;
+  --error-text: #81242a;
 }
 
 * {
@@ -36,9 +33,11 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-family: Poppins, "Avenir Next", Avenir, "Helvetica Neue", Helvetica,
-    sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   font-weight: 400;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -52,12 +51,31 @@ label[for] {
 }
 
 ::selection {
-  background: #dbdbff;
+  background: #dcdaf5;
 }
 
 a:focus-visible,
 button:focus-visible,
 label[for]:focus-visible {
-  outline: 3px solid var(--action-ring);
+  outline: 3px solid var(--action);
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (width < 40rem) {
+  .text-xs,
+  .text-\[11px\] {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
 }

@@ -7,17 +7,10 @@ import type {
   UnknownImportResult,
 } from "@/types/import";
 
+import { normalizeHeader } from "@/lib/matching/normalize";
+
 import { parseEngageCsv } from "./engage";
 import { parseLumaCsv } from "./luma";
-
-function normalizeHeader(header: string): string {
-  return header
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
-}
 
 function isEngageHeader(row: string[]): boolean {
   const headers = new Set(row.map(normalizeHeader));
@@ -45,6 +38,12 @@ function isLumaHeader(row: string[]): boolean {
     "check in time",
     "checked in at",
     "checkin time",
+    "checked-in at",
+    "checked in",
+    "checked-in",
+    "checked in status",
+    "check in status",
+    "attendance",
     "ticket type",
   ].some((header) => headers.has(header));
 

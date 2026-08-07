@@ -8,6 +8,12 @@ import type {
   EngageImportRow,
   ImportIssue,
 } from "@/types/import";
+import {
+  EMAIL_PATTERN,
+  isNyuEmail,
+  normalizeEmail,
+  normalizeHeader,
+} from "@/lib/matching/normalize";
 
 const HEADER_ALIASES = {
   firstName: ["first name"],
@@ -20,17 +26,6 @@ const HEADER_ALIASES = {
   comments: ["comments"],
   cardIdNumber: ["card id number", "card id"],
 } as const;
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function normalizeHeader(header: string): string {
-  return header
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
-}
 
 function isBlankRow(row: string[]): boolean {
   return row.every((cell) => cell.trim() === "");
@@ -61,13 +56,7 @@ function readCell(row: string[], index: number | undefined): string {
   return index === undefined ? "" : (row[index] ?? "").trim();
 }
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
 
-function isNyuEmail(email: string): boolean {
-  return EMAIL_PATTERN.test(email) && email.endsWith("@nyu.edu");
-}
 
 function joinName(firstName: string, lastName: string): string {
   return [firstName, lastName].filter(Boolean).join(" ");

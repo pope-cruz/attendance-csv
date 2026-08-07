@@ -7,6 +7,11 @@ import type {
   LumaImportResult,
   LumaImportRow,
 } from "@/types/import";
+import {
+  EMAIL_PATTERN,
+  normalizeEmail,
+  normalizeHeader,
+} from "@/lib/matching/normalize";
 
 const HEADER_ALIASES = {
   email: ["email", "email address", "guest email"],
@@ -15,20 +20,10 @@ const HEADER_ALIASES = {
   lastName: ["last name", "guest last name"],
   approvalStatus: ["approval status"],
   registrationStatus: ["registration status"],
-  checkInTime: ["check in time", "checked in at", "checkin time"],
+  checkInTime: ["check in time", "checked in at", "checkin time", "checked-in at"],
+  checkedIn: ["checked in", "checked-in", "checked in status", "check in status", "attendance"],
   ticketType: ["ticket type"],
 } as const;
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function normalizeHeader(header: string): string {
-  return header
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
-}
 
 function findHeader(
   headers: string[],
@@ -86,7 +81,7 @@ function buildAttendee(
     );
 
   return {
-    email: readCell(row, headers.email).toLowerCase(),
+    email: normalizeEmail(readCell(row, headers.email)),
     ...(fullName && { name: fullName }),
     ...(readCell(row, headers.approvalStatus) && {
       approvalStatus: readCell(row, headers.approvalStatus),
@@ -96,6 +91,9 @@ function buildAttendee(
     }),
     ...(readCell(row, headers.checkInTime) && {
       checkInTime: readCell(row, headers.checkInTime),
+    }),
+    ...(readCell(row, headers.checkedIn) && {
+      checkedIn: readCell(row, headers.checkedIn),
     }),
     ...(readCell(row, headers.ticketType) && {
       ticketType: readCell(row, headers.ticketType),
