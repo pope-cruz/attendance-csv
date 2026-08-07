@@ -28,6 +28,26 @@ type EventRow = {
   issues: unknown;
 };
 
+type EventPayload = {
+  id: string;
+  name: string;
+  event_url: string | null;
+  instagram_url: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  file_name: string;
+  file_size: number;
+  source: "luma" | "engage";
+  detected_headers: string[];
+  valid_row_count: number;
+  invalid_row_count: number;
+};
+
+type SaveEventPayload = {
+  event_payload: EventPayload;
+  rows_payload: EventRow[];
+};
+
 function toSupabaseRows(record: SessionEventRecord): EventRow[] {
   const result: AttendanceImportResult = record.attendance.result;
 
@@ -87,6 +107,31 @@ function toSupabaseRows(record: SessionEventRecord): EventRow[] {
   }
 
   return [];
+}
+
+function buildSavePayload(record: SessionEventRecord): SaveEventPayload {
+  const result = record.attendance.result;
+  if (result.source === "unknown") {
+    throw new Error("Cannot save an unrecognized attendance source.");
+  }
+
+  return {
+    event_payload: {
+      id: record.id,
+      name: record.details.name,
+      event_url: record.details.eventUrl || null,
+      instagram_url: record.details.instagramUrl || null,
+      start_date: record.details.startDate || null,
+      end_date: record.details.endDate || null,
+      file_name: record.attendance.fileName,
+      file_size: record.attendance.fileSize,
+      source: result.source,
+      detected_headers: result.data.detectedHeaders,
+      valid_row_count: result.data.validRowCount,
+      invalid_row_count: result.data.invalidRowCount,
+    },
+    rows_payload: toSupabaseRows(record),
+  };
 }
 
 export async function loadEventRecords(): Promise<SessionEventRecord[]> {
@@ -208,40 +253,12 @@ export async function loadEventRecords(): Promise<SessionEventRecord[]> {
 }
 
 export async function saveEventRecord(record: SessionEventRecord): Promise<void> {
+  const payload = buildSavePayload(record);
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const result = record.attendance.result;
-
-  const { error: eventError } = await supabase.from("events").upsert(
-    {
-      id: record.id,
-      name: record.details.name,
-      event_url: record.details.eventUrl || null,
-      instagram_url: record.details.instagramUrl || null,
-      start_date: record.details.startDate || null,
-      end_date: record.details.endDate || null,
-      file_name: record.attendance.fileName,
-      file_size: record.attendance.fileSize,
-      source: result.source,
-      detected_headers: result.source === "unknown" ? [] : result.data.detectedHeaders,
-      valid_row_count: result.source === "unknown" ? 0 : result.data.validRowCount,
-      invalid_row_count: result.source === "unknown" ? 0 : result.data.invalidRowCount,
-    },
-    { onConflict: "id" },
-  );
-
-  if (eventError) throw new Error(eventError.message);
-
-  // Replace rows for this event (delete then insert) to keep idempotent on re-upload
-  const { error: deleteError } = await supabase.from("event_rows").delete().eq("event_id", record.id);
-  if (deleteError) throw new Error(deleteError.message);
-
-  const rows = toSupabaseRows(record);
-  if (rows.length === 0) return;
-
-  const { error: insertError } = await supabase.from("event_rows").insert(rows);
-  if (insertError) throw new Error(insertError.message);
+  const { error } = await supabase.rpc("save_event_with_rows", payload);
+  if (error) throw new Error(`Event could not be saved: ${error.message}`);
 }
 
 export async function deleteEventRecord(eventId: string): Promise<void> {

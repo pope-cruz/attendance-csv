@@ -32,14 +32,11 @@ export function classifyLumaAttendance(
         basis: "missing_attendance_signal",
       };
     }
-    // Any other non-empty "Checked In" value (e.g. time string) counts as attended
-    if (attendee?.checkedIn?.trim()) {
-      return {
-        status: "attended",
-        basis: "luma_check_in",
-        rawValue: attendee?.checkedIn,
-      };
-    }
+    return {
+      status: "unknown",
+      basis: "unrecognized_luma_check_in",
+      rawValue: attendee?.checkedIn,
+    };
   }
 
   return {

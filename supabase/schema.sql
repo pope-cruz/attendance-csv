@@ -1,5 +1,5 @@
 -- Run this in Supabase Dashboard → SQL Editor → New query → Run
--- Creates events + event_rows for tech-community-ops. Idempotent (safe to re-run fails if exists — drop first if needed).
+-- Creates events + event_rows for tech-community-ops. Safe to re-run.
 
 create extension if not exists "pgcrypto";
 
@@ -47,6 +47,170 @@ create index if not exists idx_event_rows_event_id on event_rows (event_id);
 create index if not exists idx_event_rows_email on event_rows (email);
 create index if not exists idx_event_rows_event_row on event_rows (event_id, row_number);
 create index if not exists idx_events_created_at on events (created_at);
+
+-- Refuse to add the uniqueness guarantee if existing data needs review.
+-- This block never deletes or modifies attendee rows.
+do $$
+begin
+  if exists (
+    select 1
+    from public.event_rows
+    group by event_id, row_number
+    having count(*) > 1
+  ) then
+    raise exception 'Duplicate event_rows exist for an event_id and row_number. Review them before applying this schema.';
+  end if;
+end;
+$$;
+
+create unique index if not exists idx_event_rows_event_row_unique
+  on event_rows (event_id, row_number);
+
+-- Replaces an event and all of its rows in one database transaction.
+-- SECURITY INVOKER keeps normal RLS checks in force for the caller.
+create or replace function public.save_event_with_rows(
+  event_payload jsonb,
+  rows_payload jsonb
+)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  event_id_value uuid;
+begin
+  if jsonb_typeof(event_payload) is distinct from 'object' then
+    raise exception 'event_payload must be a JSON object';
+  end if;
+
+  if jsonb_typeof(rows_payload) is distinct from 'array' then
+    raise exception 'rows_payload must be a JSON array';
+  end if;
+
+  event_id_value := nullif(event_payload ->> 'id', '')::uuid;
+  if event_id_value is null then
+    raise exception 'event_payload.id is required';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(rows_payload) as row_item(value)
+    where nullif(row_item.value ->> 'event_id', '')::uuid
+      is distinct from event_id_value
+  ) then
+    raise exception 'Every row event_id must match event_payload.id';
+  end if;
+
+  insert into public.events (
+    id,
+    name,
+    event_url,
+    instagram_url,
+    start_date,
+    end_date,
+    file_name,
+    file_size,
+    source,
+    detected_headers,
+    valid_row_count,
+    invalid_row_count
+  )
+  values (
+    event_id_value,
+    event_payload ->> 'name',
+    nullif(event_payload ->> 'event_url', ''),
+    nullif(event_payload ->> 'instagram_url', ''),
+    nullif(event_payload ->> 'start_date', ''),
+    nullif(event_payload ->> 'end_date', ''),
+    event_payload ->> 'file_name',
+    (event_payload ->> 'file_size')::int,
+    event_payload ->> 'source',
+    array(
+      select jsonb_array_elements_text(
+        coalesce(event_payload -> 'detected_headers', '[]'::jsonb)
+      )
+    ),
+    (event_payload ->> 'valid_row_count')::int,
+    (event_payload ->> 'invalid_row_count')::int
+  )
+  on conflict (id) do update set
+    name = excluded.name,
+    event_url = excluded.event_url,
+    instagram_url = excluded.instagram_url,
+    start_date = excluded.start_date,
+    end_date = excluded.end_date,
+    file_name = excluded.file_name,
+    file_size = excluded.file_size,
+    source = excluded.source,
+    detected_headers = excluded.detected_headers,
+    valid_row_count = excluded.valid_row_count,
+    invalid_row_count = excluded.invalid_row_count;
+
+  delete from public.event_rows
+  where event_id = event_id_value;
+
+  insert into public.event_rows (
+    event_id,
+    row_number,
+    email,
+    display_email,
+    display_name,
+    source,
+    check_in_time,
+    checked_in,
+    approval_status,
+    registration_status,
+    ticket_type,
+    campus_email,
+    preferred_email,
+    attendance_status,
+    attended,
+    rsvp_label,
+    original_row,
+    issues
+  )
+  select
+    row_data.event_id,
+    row_data.row_number,
+    row_data.email,
+    row_data.display_email,
+    row_data.display_name,
+    row_data.source,
+    row_data.check_in_time,
+    row_data.checked_in,
+    row_data.approval_status,
+    row_data.registration_status,
+    row_data.ticket_type,
+    row_data.campus_email,
+    row_data.preferred_email,
+    row_data.attendance_status,
+    row_data.attended,
+    row_data.rsvp_label,
+    row_data.original_row,
+    coalesce(row_data.issues, '[]'::jsonb)
+  from jsonb_to_recordset(rows_payload) as row_data (
+    event_id uuid,
+    row_number int,
+    email text,
+    display_email text,
+    display_name text,
+    source text,
+    check_in_time text,
+    checked_in text,
+    approval_status text,
+    registration_status text,
+    ticket_type text,
+    campus_email text,
+    preferred_email text,
+    attendance_status text,
+    attended boolean,
+    rsvp_label text,
+    original_row jsonb,
+    issues jsonb
+  );
+end;
+$$;
 
 -- RLS: start open for internal ops (like current IndexedDB). Lock down later with auth.
 alter table events enable row level security;

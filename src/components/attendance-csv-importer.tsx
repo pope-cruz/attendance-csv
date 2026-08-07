@@ -144,6 +144,7 @@ function eventDateLabel(details: EventDetails): string {
 
 export function AttendanceCsvImporter() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const pendingEventIdRef = useRef<string | null>(null);
   const [eventDetails, setEventDetails] =
     useState<EventDetails>(EMPTY_EVENT_DETAILS);
   const [loadedImport, setLoadedImport] =
@@ -228,6 +229,7 @@ export function AttendanceCsvImporter() {
         fileSize: file.size,
         result,
       });
+      pendingEventIdRef.current = null;
       setEventDetails((currentDetails) =>
         fillEventDetailsFromImport(currentDetails, result),
       );
@@ -268,6 +270,7 @@ export function AttendanceCsvImporter() {
 
   function resetImport(): void {
     setLoadedImport(null);
+    pendingEventIdRef.current = null;
     setFileError(null);
     setRecordError(null);
     setLastAddedEventName(null);
@@ -289,17 +292,15 @@ export function AttendanceCsvImporter() {
       return;
     }
 
-    const result = createEventRecord(
-      crypto.randomUUID(),
-      eventDetails,
-      loadedImport,
-    );
+    const eventId = pendingEventIdRef.current ?? crypto.randomUUID();
+    const result = createEventRecord(eventId, eventDetails, loadedImport);
 
     if (!result.ok) {
       setRecordError(result.message);
       return;
     }
 
+    pendingEventIdRef.current = eventId;
     setIsSavingEvent(true);
     try {
       await saveEventRecord(result.record);
@@ -309,6 +310,7 @@ export function AttendanceCsvImporter() {
       setRecordError(null);
       setEventDetails(EMPTY_EVENT_DETAILS);
       setLoadedImport(null);
+      pendingEventIdRef.current = null;
       setFileError(null);
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -821,7 +823,6 @@ function SessionEventList({
 
       <ul className="mt-5 grid gap-2">
         {records.map((record) => {
-          const { source } = record.attendance.result;
           const attendanceSummary = summarizeAttendance(record.attendance.result);
           const isSelected = record.id === selectedEventId;
 
@@ -1278,23 +1279,6 @@ function SessionEventsSummaryView({
         {summary.attendedCount} attended of {summary.sourceRowCount} rows across{" "}
         {summary.eventCount} {summary.eventCount === 1 ? "event" : "events"}
       </p>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="px-4 py-3.5">
-      <p className="text-xl font-semibold tracking-[-0.02em] text-[var(--ink)]">
-        {value}
-      </p>
-      <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{label}</p>
     </div>
   );
 }

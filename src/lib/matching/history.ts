@@ -1,6 +1,7 @@
 import { classifyEngageAttendance, classifyLumaAttendance } from "@/lib/attendance/classify";
 import { normalizeEmail } from "@/lib/matching/normalize";
 import type { SessionEventRecord } from "@/types/event";
+import type { ImportIssue } from "@/types/import";
 
 export interface MemberEventAttendance {
   eventId: string;
@@ -24,14 +25,46 @@ export interface Member {
   allEvents: MemberEventAttendance[];
 }
 
+interface MemberCandidate {
+  displayEmail: string;
+  displayName: string;
+  event: MemberEventAttendance;
+}
+
 function eventDateLabel(details: SessionEventRecord["details"]): string {
   if (details.startDate && details.startDate === details.endDate) return details.startDate;
   if (details.startDate && details.endDate) return `${details.startDate} — ${details.endDate}`;
   return details.startDate || details.endDate || "";
 }
 
+function hasUsableIdentity(
+  email: string | undefined,
+  issues: ImportIssue[],
+): email is string {
+  return Boolean(email?.trim()) && !issues.some((issue) => issue.severity === "error");
+}
+
+function addCandidate(
+  candidatesByEmail: Map<string, MemberCandidate[]>,
+  email: string,
+  name: string | undefined,
+  event: MemberEventAttendance,
+): void {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return;
+
+  const candidate: MemberCandidate = {
+    displayEmail: email,
+    displayName: name || email,
+    event,
+  };
+  const candidates = candidatesByEmail.get(normalizedEmail) ?? [];
+  candidates.push(candidate);
+  candidatesByEmail.set(normalizedEmail, candidates);
+}
+
 export function groupByMember(records: SessionEventRecord[]): Member[] {
-  const byEmail = new Map<string, Member>();
+  const candidatesByEmail = new Map<string, MemberCandidate[]>();
 
   for (const record of records) {
     const dateLabel = eventDateLabel(record.details);
@@ -39,10 +72,7 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
     if (record.attendance.result.source === "luma") {
       for (const row of record.attendance.result.data.rows) {
         const attendee = row.attendee;
-        if (!attendee?.email) continue;
-
-        const normalized = normalizeEmail(attendee.email);
-        if (!normalized) continue;
+        if (!hasUsableIdentity(attendee?.email, row.issues)) continue;
 
         const classification = classifyLumaAttendance(attendee);
         const attended = classification.status === "attended";
@@ -51,7 +81,7 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
         );
         const rsvpLabel = rsvpParts.length > 0 ? rsvpParts.join(" • ") : undefined;
 
-        const entry: MemberEventAttendance = {
+        addCandidate(candidatesByEmail, attendee.email, attendee.name, {
           eventId: record.id,
           eventName: record.details.name,
           eventDate: dateLabel,
@@ -60,48 +90,19 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
           rsvpLabel,
           rawAttendanceValue: classification.rawValue,
           rowNumber: row.rowNumber,
-        };
-
-        let member = byEmail.get(normalized);
-        if (!member) {
-          member = {
-            normalizedEmail: normalized,
-            displayEmail: attendee.email,
-            displayName: attendee.name || attendee.email,
-            eventCount: 0,
-            attendedCount: 0,
-            attendedEvents: [],
-            allEvents: [],
-          };
-          byEmail.set(normalized, member);
-        }
-
-        // Prefer first non-email name if we get a better one
-        if (attendee.name && member.displayName === member.displayEmail) {
-          member.displayName = attendee.name;
-        }
-
-        member.allEvents.push(entry);
-        if (attended) {
-          member.attendedCount += 1;
-          member.attendedEvents.push(entry);
-        }
+        });
       }
     }
 
     if (record.attendance.result.source === "engage") {
       for (const row of record.attendance.result.data.rows) {
         const attendee = row.attendee;
-        // Only count resolved NYU identities — attendee.email is undefined for missing/conflicting
-        if (!attendee.email) continue;
-
-        const normalized = normalizeEmail(attendee.email);
-        if (!normalized) continue;
+        if (!hasUsableIdentity(attendee.email, row.issues)) continue;
 
         const classification = classifyEngageAttendance(attendee);
         const attended = classification.status === "attended";
 
-        const entry: MemberEventAttendance = {
+        addCandidate(candidatesByEmail, attendee.email, attendee.name, {
           eventId: record.id,
           eventName: record.details.name,
           eventDate: dateLabel,
@@ -110,43 +111,51 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
           rsvpLabel: attendee.attendanceStatus?.trim() || undefined,
           rawAttendanceValue: attendee.attendanceStatus,
           rowNumber: row.rowNumber,
-        };
-
-        let member = byEmail.get(normalized);
-        if (!member) {
-          member = {
-            normalizedEmail: normalized,
-            displayEmail: attendee.email,
-            displayName: attendee.name || attendee.email,
-            eventCount: 0,
-            attendedCount: 0,
-            attendedEvents: [],
-            allEvents: [],
-          };
-          byEmail.set(normalized, member);
-        }
-
-        if (attendee.name && member.displayName === member.displayEmail) {
-          member.displayName = attendee.name;
-        }
-
-        member.allEvents.push(entry);
-        if (attended) {
-          member.attendedCount += 1;
-          member.attendedEvents.push(entry);
-        }
+        });
       }
     }
   }
 
-  // Finalize counts: distinct events per member
-  for (const member of byEmail.values()) {
-    const distinctEventIds = new Set(member.allEvents.map((e) => e.eventId));
-    member.eventCount = distinctEventIds.size;
+  const members: Member[] = [];
+
+  for (const [normalizedEmail, candidates] of candidatesByEmail) {
+    const candidatesByEvent = new Map<string, MemberCandidate[]>();
+    for (const candidate of candidates) {
+      const eventCandidates = candidatesByEvent.get(candidate.event.eventId) ?? [];
+      eventCandidates.push(candidate);
+      candidatesByEvent.set(candidate.event.eventId, eventCandidates);
+    }
+
+    const unambiguousCandidates = [...candidatesByEvent.values()]
+      .filter((eventCandidates) => eventCandidates.length === 1)
+      .map((eventCandidates) => eventCandidates[0]);
+    const completeCandidates = unambiguousCandidates.filter(
+      (candidate): candidate is MemberCandidate => candidate !== undefined,
+    );
+
+    if (completeCandidates.length === 0) continue;
+
+    const namedCandidate = completeCandidates.find(
+      (candidate) => candidate.displayName !== candidate.displayEmail,
+    );
+    const representative = namedCandidate ?? completeCandidates[0];
+    if (!representative) continue;
+
+    const allEvents = completeCandidates.map((candidate) => candidate.event);
+    const attendedEvents = allEvents.filter((event) => event.attended);
+    members.push({
+      normalizedEmail,
+      displayEmail: representative.displayEmail,
+      displayName: representative.displayName,
+      eventCount: allEvents.length,
+      attendedCount: attendedEvents.length,
+      attendedEvents,
+      allEvents,
+    });
   }
 
   // Leaderboard order: most attended desc, then eventCount desc, then name
-  return [...byEmail.values()].sort(
+  return members.sort(
     (a, b) =>
       b.attendedCount - a.attendedCount ||
       b.eventCount - a.eventCount ||

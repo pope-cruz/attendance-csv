@@ -1,12 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Member } from "@/lib/matching/history";
 
-function MemberDetail({ member, onClose }: { member: Member; onClose: () => void }) {
+function MemberDetail({
+  member,
+  onClose,
+}: {
+  member: Member;
+  onClose: () => void;
+}) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const attendedEvents = member.attendedCount;
   const rsvpEvents = member.allEvents.filter((e) => !e.attended && e.rsvpLabel).length;
+
+  useEffect(() => {
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
+  }, [onClose]);
 
   return (
     <div
@@ -32,6 +62,7 @@ function MemberDetail({ member, onClose }: { member: Member; onClose: () => void
             </p>
           </div>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label="Close"
@@ -101,6 +132,15 @@ export function MembersLeaderboard({ members }: { members: Member[] }) {
   const [query, setQuery] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
 
+  const closeSelectedMember = useCallback(() => {
+    setSelectedEmail(null);
+  }, []);
+
+  const rankByEmail = useMemo(
+    () => new Map(members.map((member, index) => [member.normalizedEmail, index + 1])),
+    [members],
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return members;
@@ -116,7 +156,7 @@ export function MembersLeaderboard({ members }: { members: Member[] }) {
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <h3 className="text-sm font-semibold">No members yet</h3>
         <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-          Upload events on the <a href="/" className="underline">Upload</a> tab. Attended members will be saved to Supabase and appear here.
+          Upload events on the <Link href="/" className="underline">Upload</Link> tab. Attended members will be saved to Supabase and appear here.
         </p>
       </div>
     );
@@ -149,19 +189,27 @@ export function MembersLeaderboard({ members }: { members: Member[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {filtered.map((m, idx) => {
-              const rank = idx + 1;
+            {filtered.map((m) => {
+              const rank = rankByEmail.get(m.normalizedEmail);
               const isSelected = selectedEmail === m.normalizedEmail;
               return (
                 <tr
                   key={m.normalizedEmail}
-                  className={`cursor-pointer hover:bg-[var(--subtle)] ${isSelected ? "bg-[var(--action-soft)]" : ""}`}
-                  onClick={() => setSelectedEmail(isSelected ? null : m.normalizedEmail)}
+                  className={isSelected ? "bg-[var(--action-soft)]" : ""}
                 >
                   <td className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">{rank}</td>
                   <td className="px-4 py-3">
-                    <span className="block font-medium text-[var(--ink)]">{m.displayName}</span>
-                    <span className="block text-xs text-[var(--muted)]">{m.displayEmail}</span>
+                    <button
+                      type="button"
+                      aria-expanded={isSelected}
+                      aria-haspopup="dialog"
+                      aria-label={`View attendance for ${m.displayName}`}
+                      className="block w-full rounded-sm text-left hover:text-[var(--action)]"
+                      onClick={() => setSelectedEmail(m.normalizedEmail)}
+                    >
+                      <span className="block font-medium">{m.displayName}</span>
+                      <span className="block text-xs text-[var(--muted)]">{m.displayEmail}</span>
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex rounded-md bg-[var(--success-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--success-text)]">
@@ -180,7 +228,7 @@ export function MembersLeaderboard({ members }: { members: Member[] }) {
         <p className="rounded-lg border border-[var(--border)] bg-[var(--canvas)] px-4 py-3 text-sm text-[var(--muted)]">No matches for “{query}”.</p>
       )}
 
-      {selected && <MemberDetail member={selected} onClose={() => setSelectedEmail(null)} />}
+      {selected && <MemberDetail member={selected} onClose={closeSelectedMember} />}
     </div>
   );
 }

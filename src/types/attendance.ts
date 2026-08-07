@@ -4,6 +4,7 @@ export type AttendanceClassificationBasis =
   | "luma_check_in"
   | "engage_status"
   | "missing_attendance_signal"
+  | "unrecognized_luma_check_in"
   | "unrecognized_attendance_status";
 
 export interface AttendanceClassification {
