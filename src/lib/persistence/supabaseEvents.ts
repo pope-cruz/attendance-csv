@@ -3,7 +3,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import type { SessionEventRecord } from "@/types/event";
 import type { AttendanceImportResult, ImportIssue } from "@/types/import";
 
-// Supabase tables: events + event_rows (see docs/supabase-checklist.md for SQL)
+// Supabase tables and persistence functions are defined in supabase/schema.sql.
 // This module mirrors src/lib/persistence/events.ts signatures so callers don't change.
 
 type EventRow = {
