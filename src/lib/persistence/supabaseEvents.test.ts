@@ -14,10 +14,73 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-import { saveEventRecord } from "./supabaseEvents";
+import { loadEventRecords, saveEventRecord } from "./supabaseEvents";
 
 const LUMA_EVENT_ID = "11111111-1111-4111-8111-111111111111";
 const ENGAGE_EVENT_ID = "22222222-2222-4222-8222-222222222222";
+
+type SavedPayload = {
+  event_payload: Record<string, unknown>;
+  rows_payload: Record<string, unknown>[];
+};
+
+function capturedSavePayload(): SavedPayload {
+  const payload = supabaseMocks.rpc.mock.calls[0]?.[1] as
+    | SavedPayload
+    | undefined;
+
+  if (!payload) {
+    throw new Error("Expected saveEventRecord to send an RPC payload.");
+  }
+
+  return payload;
+}
+
+function mockLoadQueries(
+  events: Record<string, unknown>[],
+  rows: Record<string, unknown>[],
+): void {
+  const eventsOrder = vi.fn().mockResolvedValue({ data: events, error: null });
+  const rowsOrder = vi.fn().mockResolvedValue({ data: rows, error: null });
+  const rowsIn = vi.fn(() => ({ order: rowsOrder }));
+
+  supabaseMocks.from.mockImplementation((table: string) => {
+    if (table === "events") {
+      return {
+        select: vi.fn(() => ({ order: eventsOrder })),
+      };
+    }
+
+    if (table === "event_rows") {
+      return {
+        select: vi.fn(() => ({ in: rowsIn })),
+      };
+    }
+
+    throw new Error(`Unexpected fake Supabase table: ${table}`);
+  });
+}
+
+async function roundTripRecord(
+  record: SessionEventRecord,
+): Promise<SessionEventRecord> {
+  await saveEventRecord(record);
+  const payload = capturedSavePayload();
+
+  mockLoadQueries(
+    [{ ...payload.event_payload, created_at: "2026-08-07T00:00:00Z" }],
+    payload.rows_payload,
+  );
+
+  const loadedRecords = await loadEventRecords();
+  const loadedRecord = loadedRecords[0];
+
+  if (!loadedRecord) {
+    throw new Error("Expected the fake Supabase queries to load one event.");
+  }
+
+  return loadedRecord;
+}
 
 function lumaRecord(): SessionEventRecord {
   return {
@@ -73,7 +136,13 @@ function lumaRecord(): SessionEventRecord {
               ],
             },
           ],
-          fileIssues: [],
+          fileIssues: [
+            {
+              code: "malformed_csv",
+              severity: "error",
+              message: "Fake Luma file parsing issue",
+            },
+          ],
           detectedHeaders: ["Email", "Check-in Time", "Checked In"],
           validRowCount: 1,
           invalidRowCount: 1,
@@ -121,7 +190,13 @@ function engageRecord(): SessionEventRecord {
               issues: [],
             },
           ],
-          fileIssues: [],
+          fileIssues: [
+            {
+              code: "malformed_csv",
+              severity: "error",
+              message: "Fake Engage file parsing issue",
+            },
+          ],
           detectedHeaders: ["Campus Email", "Attendance Status"],
           validRowCount: 1,
           invalidRowCount: 0,
@@ -158,13 +233,13 @@ function unknownRecord(): SessionEventRecord {
   };
 }
 
-describe("saveEventRecord", () => {
-  beforeEach(() => {
-    supabaseMocks.from.mockReset();
-    supabaseMocks.rpc.mockReset();
-    supabaseMocks.rpc.mockResolvedValue({ error: null });
-  });
+beforeEach(() => {
+  supabaseMocks.from.mockReset();
+  supabaseMocks.rpc.mockReset();
+  supabaseMocks.rpc.mockResolvedValue({ error: null });
+});
 
+describe("saveEventRecord", () => {
   it("saves a Luma event and all source rows with one RPC call", async () => {
     await saveEventRecord(lumaRecord());
 
@@ -184,6 +259,13 @@ describe("saveEventRecord", () => {
         detected_headers: ["Email", "Check-in Time", "Checked In"],
         valid_row_count: 1,
         invalid_row_count: 1,
+        file_issues: [
+          {
+            code: "malformed_csv",
+            severity: "error",
+            message: "Fake Luma file parsing issue",
+          },
+        ],
       },
       rows_payload: [
         expect.objectContaining({
@@ -224,6 +306,13 @@ describe("saveEventRecord", () => {
         id: ENGAGE_EVENT_ID,
         source: "engage",
         instagram_url: "https://example.com/post",
+        file_issues: [
+          {
+            code: "malformed_csv",
+            severity: "error",
+            message: "Fake Engage file parsing issue",
+          },
+        ],
       },
       rows_payload: [
         {
@@ -270,5 +359,40 @@ describe("saveEventRecord", () => {
     await expect(saveEventRecord(lumaRecord())).rejects.toThrow(
       "Event could not be saved: Fake database failure",
     );
+  });
+});
+
+describe("loadEventRecords", () => {
+  it("round-trips a Luma event without losing validation or source data", async () => {
+    const record = lumaRecord();
+
+    await expect(roundTripRecord(record)).resolves.toEqual(record);
+  });
+
+  it("round-trips an Engage event without losing validation or source data", async () => {
+    const record = engageRecord();
+
+    await expect(roundTripRecord(record)).resolves.toEqual(record);
+  });
+
+  it("uses an empty file issue list for a legacy event without stored issues", async () => {
+    const record = lumaRecord();
+    await saveEventRecord(record);
+    const payload = capturedSavePayload();
+
+    mockLoadQueries(
+      [
+        {
+          ...payload.event_payload,
+          file_issues: null,
+          created_at: "2026-08-07T00:00:00Z",
+        },
+      ],
+      payload.rows_payload,
+    );
+
+    const loadedRecords = await loadEventRecords();
+
+    expect(loadedRecords[0]?.attendance.result.data.fileIssues).toEqual([]);
   });
 });

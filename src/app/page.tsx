@@ -1,28 +1,42 @@
+"use client";
+
+import { Column, Grid } from "@carbon/react";
+
 import { AttendanceCsvImporter } from "@/components/attendance-csv-importer";
 import { SiteNav } from "@/components/site-nav";
 
 export default function Home() {
   return (
-    <main className="min-h-[100dvh] px-4 sm:px-6">
-      <div className="mx-auto max-w-[1120px]">
-        <SiteNav />
+    <div className="min-h-[100dvh] bg-[var(--canvas)]">
+      <SiteNav />
 
-        <section className="pb-6 pt-8 sm:pb-8 sm:pt-10">
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-3xl">
-            Event attendance
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Upload a Luma or NYU Engage CSV. Check-in decides who attended.
-          </p>
+      <main id="main-content" className="pb-12">
+        <section className="attendance-hero" aria-labelledby="page-title">
+          <Grid fullWidth className="attendance-hero-grid">
+            <Column sm={4} md={8} lg={12}>
+              <p className="attendance-eyebrow">Internal event operations</p>
+              <h1 id="page-title" className="attendance-title">
+                Tech@NYU event attendance
+              </h1>
+              <p className="attendance-intro">
+                Import a Luma or NYU Engage export, verify every source row, and
+                save confirmed attendance to the shared workspace.
+              </p>
+            </Column>
+          </Grid>
         </section>
 
         <AttendanceCsvImporter />
 
-        <footer className="mt-8 flex flex-col gap-1 border-t border-[var(--border)] py-5 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-          <span>Events are saved to Supabase and shared across your team.</span>
-          <span>Uploads are private to your workspace</span>
-        </footer>
-      </div>
-    </main>
+        <Grid fullWidth className="attendance-footer-grid">
+          <Column sm={4} md={8} lg={16}>
+            <footer className="attendance-footer">
+              <span>Saved to Supabase and shared across the operator team.</span>
+              <span>CSV parsing happens in this browser before save.</span>
+            </footer>
+          </Column>
+        </Grid>
+      </main>
+    </div>
   );
 }

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "./carbon.scss";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Event Attendance | tech@nyu",
-  description: "Add event context and review attendance exports locally.",
+  description: "Reconcile Luma and NYU Engage attendance exports.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

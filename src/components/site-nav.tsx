@@ -1,7 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import techAtNyuLogo from "../../black_bg_logo.png";
 
 const NAV_ITEMS = [
   { href: "/", label: "Upload" },
@@ -12,16 +15,30 @@ export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <header className="flex min-h-16 items-center justify-between border-b border-[var(--border)]">
-      <div className="flex items-center gap-3">
+    <header className="site-header">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+      <div className="site-brand">
         <Link
           href="/"
-          className="grid size-8 place-items-center rounded-md bg-[var(--action)] text-xs font-bold text-white no-underline"
+          className="site-mark"
+          aria-label="tech at NYU attendance home"
         >
-          t@
+          <Image
+            alt="tech@nyu"
+            className="site-logo"
+            fill
+            priority
+            src={techAtNyuLogo.src}
+            sizes="120px"
+          />
         </Link>
-        <span className="text-sm font-semibold">tech@nyu events</span>
-        <nav aria-label="Primary" className="ml-6 flex gap-1">
+        <span className="site-divider" aria-hidden="true" />
+        <span className="site-section">Event Attendance</span>
+      </div>
+      <div className="site-actions">
+        <nav aria-label="Primary" className="site-nav">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -29,21 +46,15 @@ export function SiteNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-[var(--action)] text-white"
-                    : "text-[var(--muted)] hover:bg-[var(--subtle)] hover:text-[var(--ink)]"
-                }`}
+                className={`site-nav-link ${isActive ? "site-nav-link-active" : ""}`}
               >
                 {item.label}
               </Link>
             );
           })}
         </nav>
+        <span className="site-environment">Internal</span>
       </div>
-      <span className="hidden text-xs font-medium text-[var(--muted)] sm:block">
-        Shared workspace
-      </span>
     </header>
   );
 }

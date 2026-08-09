@@ -1,5 +1,6 @@
 "use client";
 
+import { Column, Grid } from "@carbon/react";
 import { useEffect, useState } from "react";
 
 import { SiteNav } from "@/components/site-nav";
@@ -34,34 +35,61 @@ export default function MembersPage() {
   }, []);
 
   return (
-    <main className="min-h-[100dvh] px-4 sm:px-6">
-      <div className="mx-auto max-w-[1120px]">
-        <SiteNav />
+    <div className="min-h-[100dvh] bg-[var(--canvas)]">
+      <SiteNav />
 
-        <section className="pb-6 pt-8 sm:pb-8 sm:pt-10">
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-3xl">Members</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Leaderboard from your saved events. Attended = Luma check-in time or Checked In = Yes, or Engage Attended. Ranked by most attended.
-          </p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            {eventCount} {eventCount === 1 ? "event" : "events"} saved • shared via Supabase
-          </p>
+      <main id="main-content" className="pb-12">
+        <section className="attendance-hero" aria-labelledby="members-title">
+          <Grid fullWidth className="attendance-hero-grid">
+            <Column sm={4} md={8} lg={12}>
+              <p className="attendance-eyebrow">Shared member history</p>
+              <h1 id="members-title" className="attendance-title">
+                Members
+              </h1>
+              <p className="attendance-intro">
+                Review attendance history derived from saved events, ranked by
+                the number of events each member attended.
+              </p>
+              <p className="members-meta">
+                {eventCount} {eventCount === 1 ? "event" : "events"} saved ·
+                shared via Supabase
+              </p>
+            </Column>
+          </Grid>
         </section>
 
-        {error && (
-          <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]" role="alert">
-            {error}
-          </div>
-        )}
+        <Grid fullWidth className="attendance-shell-grid members-content-grid">
+          <Column sm={4} md={8} lg={16}>
+            <section className="members-workspace" aria-label="Member leaderboard">
+              {error && (
+                <div
+                  className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
 
-        {members === null && !error && <p className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]">Loading members…</p>}
+              {members === null && !error && (
+                <p className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]">
+                  Loading members…
+                </p>
+              )}
 
-        {members !== null && <MembersLeaderboard members={members} />}
+              {members !== null && <MembersLeaderboard members={members} />}
+            </section>
+          </Column>
+        </Grid>
 
-        <footer className="mt-8 border-t border-[var(--border)] py-5 text-xs text-[var(--muted)]">
-          Shared Supabase data — deleting in Upload removes it for everyone.
-        </footer>
-      </div>
-    </main>
+        <Grid fullWidth className="attendance-footer-grid">
+          <Column sm={4} md={8} lg={16}>
+            <footer className="attendance-footer">
+              <span>Shared Supabase member history.</span>
+              <span>Deleting in Upload removes an event for everyone.</span>
+            </footer>
+          </Column>
+        </Grid>
+      </main>
+    </div>
   );
 }

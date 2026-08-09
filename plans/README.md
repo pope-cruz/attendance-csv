@@ -11,8 +11,8 @@ complete.
 |---|---|---:|---:|---|---|
 | 001 | Make attendance and member counts ambiguity-safe | P1 | S | — | DONE |
 | 002 | Make Supabase event saves atomic and retry-safe | P1 | M | 001 | IN PROGRESS — code complete; awaiting Supabase preflight and schema deployment |
-| 005 | Preserve validation issues through the Supabase round trip | P1 | M | 002 | TODO |
-| 003 | Lock attendance data behind an email allowlist | P1 | L | 002, 005 | TODO |
+| 005 | Preserve validation issues through the Supabase round trip | P1 | M | 002 | IN PROGRESS — local implementation complete; awaiting schema deployment and live fake-data verification |
+| 003 | Lock attendance data behind an email allowlist | P1 | L | 002, 005 | REJECTED — keep access at Vercel for now instead of adding Supabase Auth |
 | 004 | Restore lint and keyboard access on Members | P2 | S | 001 | DONE |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a one-line reason,
@@ -22,11 +22,11 @@ or `REJECTED` with a one-line rationale.
 
 - Execute 001 first because trustworthy attendance semantics are the core
   product requirement and later smoke tests depend on those semantics.
-- Execute 002 before 003 because the database RPC introduced by 002 must be
-  covered by the authenticated RLS policy introduced by 003.
-- Execute 005 after 002 and before 003. It extends the RPC and event schema
-  introduced by 002 so file-level validation issues survive save and reload;
-  auth should be applied only after that persistence contract is complete.
+- Plan 003 is rejected for now. Vercel access protection remains the boundary
+  for this internal tool; revisit database-level operator accounts only if the
+  team later needs per-person access control.
+- Execute 005 after 002. It extends the RPC and event schema introduced by 002
+  so file-level validation issues survive save and reload.
 - Plan 005 is P1 because silently losing validation evidence conflicts with
   the app's core correctness and source-truth requirements.
 - Plan 004 may technically run after 001 in parallel with database work, but

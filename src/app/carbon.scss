@@ -1,0 +1,26 @@
+@use "sass:meta";
+@use "@carbon/react/scss/spacing" as carbon-spacing;
+
+// Turbopack does not resolve Carbon's legacy `~@ibm/plex` font URLs.
+// Carbon's built-in IBM CDN resolver keeps the SCSS pipeline compatible.
+@use "@carbon/styles/scss/config" with (
+  $use-akamai-cdn: true
+);
+
+// Carbon ships an unlayered reset. Keeping it in an explicit cascade layer
+// lets Tailwind's utilities control local spacing without fighting the reset.
+@layer theme, base, carbon, components, utilities;
+
+@layer carbon {
+  @include meta.load-css("@carbon/react");
+}
+
+:root {
+  --attendance-space-03: #{carbon-spacing.$spacing-03};
+  --attendance-space-04: #{carbon-spacing.$spacing-04};
+  --attendance-space-05: #{carbon-spacing.$spacing-05};
+  --attendance-space-06: #{carbon-spacing.$spacing-06};
+  --attendance-space-07: #{carbon-spacing.$spacing-07};
+  --attendance-space-09: #{carbon-spacing.$spacing-09};
+  --attendance-space-10: #{carbon-spacing.$spacing-10};
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Column, Grid } from "@carbon/react";
 import {
   type ChangeEvent,
   type DragEvent,
@@ -370,183 +371,224 @@ export function AttendanceCsvImporter() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-        <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <div className="p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold tracking-[-0.01em]">
-                  Upload attendance CSV
-                </h2>
-                <p className="mt-1 max-w-xl text-sm leading-6 text-[var(--muted)]">
-                  Choose one unmodified export. Every source row remains visible
-                  for review.
-                </p>
-              </div>
-              <span className="rounded-md bg-[var(--action-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--action)]">
-                {loadedImport
-                  ? sourceLabel(loadedImport.result.source)
-                  : "Source auto-detected"}
-              </span>
-            </div>
-
-            <input
-              ref={inputRef}
-              accept=".csv,text/csv"
-              className="peer sr-only"
-              id="attendance-csv"
-              onChange={handleFileChange}
-              type="file"
-            />
-
-            <div
-              className={`mt-5 grid min-h-48 place-items-center rounded-lg border border-dashed px-6 py-8 text-center transition-colors peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--action)] ${
-                isDragging
-                  ? "border-[var(--action)] bg-[var(--action-soft)]"
-                  : "border-[var(--border-strong)] bg-[var(--canvas)]"
-              }`}
-              onDragEnter={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={handleDrop}
-            >
-              <div>
-                <span className="mx-auto grid size-10 place-items-center rounded-md bg-[var(--action-soft)] text-[11px] font-bold tracking-[0.06em] text-[var(--action)]">
-                  CSV
+    <div className="attendance-workspace">
+      <Grid
+        fullWidth
+        narrow
+        withRowGap
+        className="attendance-shell-grid attendance-setup-grid"
+      >
+        <Column sm={4} md={8} lg={10}>
+          <section className="import-panel carbon-panel overflow-hidden border border-[var(--border)] bg-[var(--surface)]">
+            <div className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="panel-step">Step 01</p>
+                  <h2 className="text-lg font-semibold tracking-[-0.01em]">
+                    Upload attendance CSV
+                  </h2>
+                  <p className="mt-1 max-w-xl text-sm leading-6 text-[var(--muted)]">
+                    Choose one unmodified export. Every source row remains visible
+                    for review.
+                  </p>
+                </div>
+                <span className="rounded-md bg-[var(--action-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--action)]">
+                  {loadedImport
+                    ? sourceLabel(loadedImport.result.source)
+                    : "Source auto-detected"}
                 </span>
-                <p className="mt-4 text-sm font-semibold">
-                  {isReading
-                    ? "Reading your export..."
-                    : "Drop an attendance export here"}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  Up to 5 MB. CSVs are processed locally before saving to Supabase.
-                </p>
-                <label
-                  className="mt-4 inline-flex min-h-11 cursor-pointer items-center rounded-md bg-[var(--action)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--action-hover)]"
-                  htmlFor="attendance-csv"
-                >
-                  {loadedImport ? "Choose another CSV" : "Choose CSV"}
-                </label>
               </div>
+
+              <input
+                ref={inputRef}
+                accept=".csv,text/csv"
+                className="peer sr-only"
+                id="attendance-csv"
+                onChange={handleFileChange}
+                type="file"
+              />
+
+              <div
+                className={`carbon-dropzone mt-6 grid min-h-48 place-items-center border border-dashed px-4 py-8 text-center transition-colors peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--action)] ${
+                  isDragging
+                    ? "border-[var(--action)] bg-[var(--action-soft)]"
+                    : "border-[var(--border-strong)] bg-[var(--canvas)]"
+                }`}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <div>
+                  <span className="mx-auto grid size-10 place-items-center rounded-md bg-[var(--action-soft)] text-[11px] font-bold tracking-[0.06em] text-[var(--action)]">
+                    CSV
+                  </span>
+                  <p className="mt-4 text-sm font-semibold">
+                    {isReading
+                      ? "Reading your export..."
+                      : "Drop an attendance export here"}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                    Up to 5 MB. CSVs are processed locally before saving to
+                    Supabase.
+                  </p>
+                  <label
+                    className="mt-4 inline-flex min-h-11 cursor-pointer items-center rounded-md bg-[var(--action)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--action-hover)]"
+                    htmlFor="attendance-csv"
+                  >
+                    {loadedImport ? "Choose another CSV" : "Choose CSV"}
+                  </label>
+                </div>
+              </div>
+
+              <div aria-live="polite">
+                {fileError && (
+                  <p className="mt-4 rounded-md bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]">
+                    {fileError}
+                  </p>
+                )}
+              </div>
+
+              <ul className="mt-6 grid gap-2 border-t border-[var(--border)] pt-4 text-xs text-[var(--muted)] sm:grid-cols-3">
+                <li>
+                  <span className="font-semibold text-[var(--ink)]">
+                    Detects
+                  </span>{" "}
+                  CSV source
+                </li>
+                <li>
+                  <span className="font-semibold text-[var(--ink)]">
+                    Checks
+                  </span>{" "}
+                  attendee identity
+                </li>
+                <li>
+                  <span className="font-semibold text-[var(--ink)]">
+                    Preserves
+                  </span>{" "}
+                  source rows
+                </li>
+              </ul>
             </div>
 
-            <div aria-live="polite">
-              {fileError && (
-                <p className="mt-4 rounded-md bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]">
-                  {fileError}
-                </p>
-              )}
+            <div className="flex flex-col gap-1 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                {loadedImport
+                  ? loadedImport.fileName
+                  : "No attendance file selected"}
+              </span>
+              <span>CSV and UTF-8 recommended</span>
             </div>
+          </section>
+        </Column>
 
-            <ul className="mt-5 grid gap-2 border-t border-[var(--border)] pt-4 text-xs text-[var(--muted)] sm:grid-cols-3">
-              <li>
-                <span className="font-semibold text-[var(--ink)]">Detects</span>{" "}
-                CSV source
-              </li>
-              <li>
-                <span className="font-semibold text-[var(--ink)]">Checks</span>{" "}
-                attendee identity
-              </li>
-              <li>
-                <span className="font-semibold text-[var(--ink)]">Preserves</span>{" "}
-                source rows
-              </li>
-            </ul>
-          </div>
-
-          <div className="flex flex-col gap-1 border-t border-[var(--border)] px-5 py-3 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <span>
-              {loadedImport ? loadedImport.fileName : "No attendance file selected"}
-            </span>
-            <span>CSV and UTF-8 recommended</span>
-          </div>
-        </section>
-
-        <EventDetailsEditor
-          details={eventDetails}
-          importResult={loadedImport?.result}
-          onChange={updateEventDetail}
-        />
-      </div>
+        <Column sm={4} md={8} lg={6}>
+          <EventDetailsEditor
+            details={eventDetails}
+            importResult={loadedImport?.result}
+            onChange={updateEventDetail}
+          />
+        </Column>
+      </Grid>
 
       {isLoadingEvents && (
-        <p
-          aria-live="polite"
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]"
-        >
-          Loading saved events...
-        </p>
+        <Grid fullWidth narrow className="attendance-shell-grid attendance-content-grid">
+          <Column sm={4} md={8} lg={16}>
+            <p
+              aria-live="polite"
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]"
+            >
+              Loading saved events...
+            </p>
+          </Column>
+        </Grid>
       )}
 
       {persistenceError && (
-        <StorageError
-          isClearing={isClearingEvents}
-          isConfirmingClear={isConfirmingClear}
-          message={persistenceError}
-          onCancelClear={() => setIsConfirmingClear(false)}
-          onClear={() => void clearAllEvents()}
-          onConfirmClear={() => setIsConfirmingClear(true)}
-          showClearControl={sessionEvents.length === 0}
-        />
+        <Grid fullWidth narrow className="attendance-shell-grid attendance-content-grid">
+          <Column sm={4} md={8} lg={16}>
+            <StorageError
+              isClearing={isClearingEvents}
+              isConfirmingClear={isConfirmingClear}
+              message={persistenceError}
+              onCancelClear={() => setIsConfirmingClear(false)}
+              onClear={() => void clearAllEvents()}
+              onConfirmClear={() => setIsConfirmingClear(true)}
+              showClearControl={sessionEvents.length === 0}
+            />
+          </Column>
+        </Grid>
       )}
 
       {loadedImport && (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <ImportPreview
-            eventDetails={eventDetails}
-            isAddDisabled={
-              isLoadingEvents ||
-              isSavingEvent ||
-              isClearingEvents ||
-              isDeletingEvent ||
-              Boolean(persistenceError)
-            }
-            isSavingEvent={isSavingEvent}
-            loadedImport={loadedImport}
-            onAddToSession={addEventToSession}
-            onReset={resetImport}
-            recordError={recordError}
-          />
-        </section>
+        <Grid fullWidth narrow className="attendance-shell-grid attendance-content-grid">
+          <Column sm={4} md={8} lg={16}>
+            <section className="carbon-panel border border-[var(--border)] bg-[var(--surface)]">
+              <ImportPreview
+                eventDetails={eventDetails}
+                isAddDisabled={
+                  isLoadingEvents ||
+                  isSavingEvent ||
+                  isClearingEvents ||
+                  isDeletingEvent ||
+                  Boolean(persistenceError)
+                }
+                isSavingEvent={isSavingEvent}
+                loadedImport={loadedImport}
+                onAddToSession={addEventToSession}
+                onReset={resetImport}
+                recordError={recordError}
+              />
+            </section>
+          </Column>
+        </Grid>
       )}
 
       {(lastAddedEventName || sessionEvents.length > 0) && (
-        <SessionEventList
-          lastAddedEventName={lastAddedEventName}
-          deleteError={deleteError}
-          eventIdPendingDeletion={eventIdPendingDeletion}
-          isClearing={isClearingEvents}
-          isConfirmingClear={isConfirmingClear}
-          isDeleting={isDeletingEvent}
-          onCancelClear={() => setIsConfirmingClear(false)}
-          onCancelDelete={() => {
-            setEventIdPendingDeletion(null);
-            setDeleteError(null);
-          }}
-          onClear={() => void clearAllEvents()}
-          onConfirmClear={() => {
-            setIsConfirmingClear(true);
-            setEventIdPendingDeletion(null);
-            setDeleteError(null);
-          }}
-          onConfirmDelete={(eventId) => {
-            setIsConfirmingClear(false);
-            setEventIdPendingDeletion(eventId);
-            setDeleteError(null);
-          }}
-          onDelete={(eventId) => void deleteLocalEvent(eventId)}
-          onSelect={setSelectedEventId}
-          records={sessionEvents}
-          selectedEventId={selectedEventId}
-        />
+        <Grid fullWidth narrow className="attendance-shell-grid attendance-content-grid">
+          <Column sm={4} md={8} lg={16}>
+            <SessionEventList
+              lastAddedEventName={lastAddedEventName}
+              deleteError={deleteError}
+              eventIdPendingDeletion={eventIdPendingDeletion}
+              isClearing={isClearingEvents}
+              isConfirmingClear={isConfirmingClear}
+              isDeleting={isDeletingEvent}
+              onCancelClear={() => setIsConfirmingClear(false)}
+              onCancelDelete={() => {
+                setEventIdPendingDeletion(null);
+                setDeleteError(null);
+              }}
+              onClear={() => void clearAllEvents()}
+              onConfirmClear={() => {
+                setIsConfirmingClear(true);
+                setEventIdPendingDeletion(null);
+                setDeleteError(null);
+              }}
+              onConfirmDelete={(eventId) => {
+                setIsConfirmingClear(false);
+                setEventIdPendingDeletion(eventId);
+                setDeleteError(null);
+              }}
+              onDelete={(eventId) => void deleteLocalEvent(eventId)}
+              onSelect={setSelectedEventId}
+              records={sessionEvents}
+              selectedEventId={selectedEventId}
+            />
+          </Column>
+        </Grid>
       )}
 
-      {selectedEvent && <SelectedEventAttendance record={selectedEvent} />}
+      {selectedEvent && (
+        <Grid fullWidth narrow className="attendance-shell-grid attendance-content-grid">
+          <Column sm={4} md={8} lg={16}>
+            <SelectedEventAttendance record={selectedEvent} />
+          </Column>
+        </Grid>
+      )}
     </div>
   );
 }
@@ -565,9 +607,10 @@ function EventDetailsEditor({
     Object.values(importResult.data.metadata).some(Boolean);
 
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
+    <section className="event-details-panel carbon-panel border border-[var(--border)] bg-[var(--surface)] p-4">
       <div>
         <div>
+          <p className="panel-step">Step 01 / context</p>
           <h2 className="text-lg font-semibold tracking-[-0.01em]">
             Event details
           </h2>
@@ -685,7 +728,7 @@ function ImportPreview({
   const { data } = result;
 
   return (
-    <div className="p-5 sm:p-6">
+    <div className="p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{loadedImport.fileName}</p>
@@ -763,7 +806,7 @@ function SessionEventList({
   selectedEventId: string | null;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
+    <section className="carbon-panel border border-[var(--border)] bg-[var(--surface)] p-4">
       {lastAddedEventName && (
         <p
           aria-live="polite"
@@ -1024,7 +1067,7 @@ function ClearEventsConfirmation({
 
 function SelectedEventAttendance({ record }: { record: SessionEventRecord }) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
+    <section className="carbon-panel border border-[var(--border)] bg-[var(--surface)] p-4">
       <div>
         <p className="text-xs font-semibold text-[var(--action)]">
           Selected event

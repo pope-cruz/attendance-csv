@@ -16,9 +16,15 @@ create table if not exists events (
   detected_headers text[] not null default '{}',
   valid_row_count int not null default 0,
   invalid_row_count int not null default 0,
+  file_issues jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   created_by uuid references auth.users(id)
 );
+
+-- Existing projects need an explicit migration because CREATE TABLE IF NOT EXISTS
+-- does not add newly declared columns.
+alter table public.events
+  add column if not exists file_issues jsonb not null default '[]'::jsonb;
 
 create table if not exists event_rows (
   id uuid primary key default gen_random_uuid(),
@@ -114,7 +120,8 @@ begin
     source,
     detected_headers,
     valid_row_count,
-    invalid_row_count
+    invalid_row_count,
+    file_issues
   )
   values (
     event_id_value,
@@ -132,7 +139,8 @@ begin
       )
     ),
     (event_payload ->> 'valid_row_count')::int,
-    (event_payload ->> 'invalid_row_count')::int
+    (event_payload ->> 'invalid_row_count')::int,
+    coalesce(event_payload -> 'file_issues', '[]'::jsonb)
   )
   on conflict (id) do update set
     name = excluded.name,
@@ -145,7 +153,8 @@ begin
     source = excluded.source,
     detected_headers = excluded.detected_headers,
     valid_row_count = excluded.valid_row_count,
-    invalid_row_count = excluded.invalid_row_count;
+    invalid_row_count = excluded.invalid_row_count,
+    file_issues = excluded.file_issues;
 
   delete from public.event_rows
   where event_id = event_id_value;
@@ -212,16 +221,43 @@ begin
 end;
 $$;
 
--- RLS: start open for internal ops (like current IndexedDB). Lock down later with auth.
-alter table events enable row level security;
-alter table event_rows enable row level security;
+-- Access is currently enforced by Vercel for this internal tool. Keep the
+-- Supabase browser client usable with its anonymous key until per-person auth
+-- is needed.
+alter table public.events enable row level security;
+alter table public.event_rows enable row level security;
 
--- Drop if re-running, then create
-drop policy if exists "allow_all_events" on events;
-create policy "allow_all_events" on events for all using (true) with check (true);
+-- Remove the deferred Supabase Auth experiment when this file is re-run.
+drop policy if exists "allowlist_select_events" on public.events;
+drop policy if exists "allowlist_insert_events" on public.events;
+drop policy if exists "allowlist_update_events" on public.events;
+drop policy if exists "allowlist_delete_events" on public.events;
+drop policy if exists "allowlist_select_event_rows" on public.event_rows;
+drop policy if exists "allowlist_insert_event_rows" on public.event_rows;
+drop policy if exists "allowlist_update_event_rows" on public.event_rows;
+drop policy if exists "allowlist_delete_event_rows" on public.event_rows;
 
-drop policy if exists "allow_all_event_rows" on event_rows;
-create policy "allow_all_event_rows" on event_rows for all using (true) with check (true);
+drop function if exists public.is_allowed_operator();
+drop table if exists public.allowed_emails;
+
+grant usage on schema public to anon, authenticated;
+grant execute on function public.save_event_with_rows(jsonb, jsonb)
+  to anon, authenticated;
+grant select, insert, update, delete
+  on table public.events, public.event_rows
+  to anon, authenticated;
+
+drop policy if exists "allow_all_events" on public.events;
+create policy "allow_all_events"
+  on public.events for all
+  using (true)
+  with check (true);
+
+drop policy if exists "allow_all_event_rows" on public.event_rows;
+create policy "allow_all_event_rows"
+  on public.event_rows for all
+  using (true)
+  with check (true);
 
 -- Verify
 select 'events' as table_name, count(*) from events

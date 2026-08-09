@@ -1,7 +1,7 @@
 import { classifyEngageAttendance, classifyLumaAttendance } from "@/lib/attendance/classify";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { SessionEventRecord } from "@/types/event";
-import type { AttendanceImportResult } from "@/types/import";
+import type { AttendanceImportResult, ImportIssue } from "@/types/import";
 
 // Supabase tables: events + event_rows (see docs/supabase-checklist.md for SQL)
 // This module mirrors src/lib/persistence/events.ts signatures so callers don't change.
@@ -41,6 +41,7 @@ type EventPayload = {
   detected_headers: string[];
   valid_row_count: number;
   invalid_row_count: number;
+  file_issues: ImportIssue[];
 };
 
 type SaveEventPayload = {
@@ -129,6 +130,7 @@ function buildSavePayload(record: SessionEventRecord): SaveEventPayload {
       detected_headers: result.data.detectedHeaders,
       valid_row_count: result.data.validRowCount,
       invalid_row_count: result.data.invalidRowCount,
+      file_issues: result.data.fileIssues,
     },
     rows_payload: toSupabaseRows(record),
   };
@@ -165,6 +167,8 @@ export async function loadEventRecords(): Promise<SessionEventRecord[]> {
     const eventId = e.id as string;
     const source = e.source as "luma" | "engage";
     const eventRows = rowsByEvent.get(eventId) ?? [];
+    const fileIssues =
+      (e.file_issues as ImportIssue[] | null | undefined) ?? [];
 
     if (source === "luma") {
       return {
@@ -198,7 +202,7 @@ export async function loadEventRecords(): Promise<SessionEventRecord[]> {
                 originalRow: r.original_row as Record<string, string | string[]>,
                 issues: (r.issues as []) ?? [],
               })),
-              fileIssues: [],
+              fileIssues,
               detectedHeaders: (e.detected_headers as string[]) ?? [],
               validRowCount: e.valid_row_count as number,
               invalidRowCount: e.invalid_row_count as number,
@@ -241,7 +245,7 @@ export async function loadEventRecords(): Promise<SessionEventRecord[]> {
               originalRow: r.original_row as Record<string, string | string[]>,
               issues: (r.issues as []) ?? [],
             })),
-            fileIssues: [],
+            fileIssues,
             detectedHeaders: (e.detected_headers as string[]) ?? [],
             validRowCount: e.valid_row_count as number,
             invalidRowCount: e.invalid_row_count as number,
