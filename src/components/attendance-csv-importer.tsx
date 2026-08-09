@@ -22,7 +22,10 @@ import {
   fillEventDetailsFromImport,
 } from "@/lib/events/details";
 import { removeEventFromCollection } from "@/lib/events/collection";
-import { createEventRecord } from "@/lib/events/record";
+import {
+  createEventRecord,
+  updateEventRecordDetails,
+} from "@/lib/events/record";
 import {
   clearEventRecords,
   deleteEventRecord,
@@ -154,6 +157,15 @@ export function AttendanceCsvImporter() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [editedEventDetails, setEditedEventDetails] =
+    useState<EventDetails | null>(null);
+  const [isSavingEventDetails, setIsSavingEventDetails] = useState(false);
+  const [eventDetailsUpdateError, setEventDetailsUpdateError] = useState<
+    string | null
+  >(null);
+  const [eventDetailsUpdateMessage, setEventDetailsUpdateMessage] = useState<
+    string | null
+  >(null);
   const [isClearingEvents, setIsClearingEvents] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
@@ -269,6 +281,68 @@ export function AttendanceCsvImporter() {
     }));
   }
 
+  function startEditingSelectedEvent(): void {
+    if (!selectedEvent) {
+      return;
+    }
+
+    setEditedEventDetails({ ...selectedEvent.details });
+    setEventDetailsUpdateError(null);
+    setEventDetailsUpdateMessage(null);
+  }
+
+  function updateSavedEventDetail(
+    field: keyof EventDetails,
+    value: string,
+  ): void {
+    setEventDetailsUpdateError(null);
+    setEditedEventDetails((currentDetails) =>
+      currentDetails
+        ? {
+            ...currentDetails,
+            [field]: value,
+          }
+        : currentDetails,
+    );
+  }
+
+  function cancelEditingSelectedEvent(): void {
+    setEditedEventDetails(null);
+    setEventDetailsUpdateError(null);
+  }
+
+  async function saveSelectedEventDetails(): Promise<void> {
+    if (!selectedEvent || !editedEventDetails) {
+      return;
+    }
+
+    const result = updateEventRecordDetails(selectedEvent, editedEventDetails);
+    if (!result.ok) {
+      setEventDetailsUpdateError(result.message);
+      return;
+    }
+
+    setIsSavingEventDetails(true);
+    setEventDetailsUpdateError(null);
+    try {
+      await saveEventRecord(result.record);
+      setSessionEvents((currentEvents) =>
+        currentEvents.map((record) =>
+          record.id === result.record.id ? result.record : record,
+        ),
+      );
+      setEditedEventDetails(null);
+      setEventDetailsUpdateMessage("Event details saved.");
+      setLastAddedEventName(null);
+    } catch {
+      setEventDetailsUpdateError(
+        "These event details could not be saved. Your changes are still open so you can try again.",
+      );
+    } finally {
+      setIsSavingEventDetails(false);
+    }
+  }
+
   function resetImport(): void {
     setLoadedImport(null);
     pendingEventIdRef.current = null;
@@ -336,6 +410,9 @@ export function AttendanceCsvImporter() {
       setDeleteError(null);
       setEventIdPendingDeletion(null);
       setIsConfirmingClear(false);
+      setEditedEventDetails(null);
+      setEventDetailsUpdateError(null);
+      setEventDetailsUpdateMessage(null);
     } catch {
       setPersistenceError(
         "Events could not be cleared. Please try again.",
@@ -361,6 +438,11 @@ export function AttendanceCsvImporter() {
       setSelectedEventId(nextCollection.selectedEventId);
       setEventIdPendingDeletion(null);
       setLastAddedEventName(null);
+      if (selectedEventId === eventId) {
+        setEditedEventDetails(null);
+        setEventDetailsUpdateError(null);
+        setEventDetailsUpdateMessage(null);
+      }
     } catch {
       setDeleteError(
         "This event could not be removed. Please try again.",
@@ -534,6 +616,8 @@ export function AttendanceCsvImporter() {
                   isSavingEvent ||
                   isClearingEvents ||
                   isDeletingEvent ||
+                  isSavingEventDetails ||
+                  Boolean(editedEventDetails) ||
                   Boolean(persistenceError)
                 }
                 isSavingEvent={isSavingEvent}
@@ -557,6 +641,7 @@ export function AttendanceCsvImporter() {
               isClearing={isClearingEvents}
               isConfirmingClear={isConfirmingClear}
               isDeleting={isDeletingEvent}
+              isEditingEventDetails={Boolean(editedEventDetails)}
               onCancelClear={() => setIsConfirmingClear(false)}
               onCancelDelete={() => {
                 setEventIdPendingDeletion(null);
@@ -574,7 +659,11 @@ export function AttendanceCsvImporter() {
                 setDeleteError(null);
               }}
               onDelete={(eventId) => void deleteLocalEvent(eventId)}
-              onSelect={setSelectedEventId}
+              onSelect={(eventId) => {
+                setSelectedEventId(eventId);
+                setEventDetailsUpdateError(null);
+                setEventDetailsUpdateMessage(null);
+              }}
               records={sessionEvents}
               selectedEventId={selectedEventId}
             />
@@ -585,7 +674,23 @@ export function AttendanceCsvImporter() {
       {selectedEvent && (
         <Grid fullWidth narrow className="attendance-shell-grid attendance-content-grid">
           <Column sm={4} md={8} lg={16}>
-            <SelectedEventAttendance record={selectedEvent} />
+            <SelectedEventAttendance
+              editedDetails={editedEventDetails}
+              error={eventDetailsUpdateError}
+              isEditDisabled={
+                isClearingEvents ||
+                isDeletingEvent ||
+                isConfirmingClear ||
+                eventIdPendingDeletion !== null
+              }
+              isSaving={isSavingEventDetails}
+              onCancelEdit={cancelEditingSelectedEvent}
+              onChange={updateSavedEventDetail}
+              onEdit={startEditingSelectedEvent}
+              onSave={() => void saveSelectedEventDetails()}
+              record={selectedEvent}
+              savedMessage={eventDetailsUpdateMessage}
+            />
           </Column>
         </Grid>
       )}
@@ -632,51 +737,71 @@ function EventDetailsEditor({
         </p>
       </div>
 
-      <div className="mt-6 grid gap-4">
-        <EventField
-          label="Event name"
-          name="name"
-          onChange={onChange}
-          placeholder="Community Demo Night"
-          value={details.name}
-        />
-        <EventField
-          label="Luma or Engage event link"
-          name="eventUrl"
-          onChange={onChange}
-          placeholder="https://lu.ma/..."
-          type="url"
-          value={details.eventUrl}
-        />
-        <EventField
-          label="Instagram post link"
-          name="instagramUrl"
-          onChange={onChange}
-          placeholder="https://instagram.com/p/..."
-          type="url"
-          value={details.instagramUrl}
-        />
-        <EventField
-          label="Start date"
-          name="startDate"
-          onChange={onChange}
-          placeholder="3/23/2026"
-          value={details.startDate}
-        />
-        <EventField
-          label="End date"
-          name="endDate"
-          onChange={onChange}
-          placeholder="3/23/2026"
-          value={details.endDate}
-        />
-      </div>
+      <EventDetailsFields details={details} onChange={onChange} />
     </section>
+  );
+}
+
+function EventDetailsFields({
+  details,
+  disabled = false,
+  onChange,
+}: {
+  details: EventDetails;
+  disabled?: boolean;
+  onChange: (field: keyof EventDetails, value: string) => void;
+}) {
+  return (
+    <div className="mt-6 grid gap-4">
+      <EventField
+        disabled={disabled}
+        label="Event name"
+        name="name"
+        onChange={onChange}
+        placeholder="Community Demo Night"
+        value={details.name}
+      />
+      <EventField
+        disabled={disabled}
+        label="Luma or Engage event link"
+        name="eventUrl"
+        onChange={onChange}
+        placeholder="https://lu.ma/..."
+        type="url"
+        value={details.eventUrl}
+      />
+      <EventField
+        disabled={disabled}
+        label="Instagram post link"
+        name="instagramUrl"
+        onChange={onChange}
+        placeholder="https://instagram.com/p/..."
+        type="url"
+        value={details.instagramUrl}
+      />
+      <EventField
+        disabled={disabled}
+        label="Start date"
+        name="startDate"
+        onChange={onChange}
+        placeholder="3/23/2026"
+        value={details.startDate}
+      />
+      <EventField
+        disabled={disabled}
+        label="End date"
+        name="endDate"
+        onChange={onChange}
+        placeholder="3/23/2026"
+        value={details.endDate}
+      />
+    </div>
   );
 }
 
 function EventField({
   className = "",
+  disabled = false,
   label,
   name,
   onChange,
@@ -685,6 +810,7 @@ function EventField({
   value,
 }: {
   className?: string;
+  disabled?: boolean;
   label: string;
   name: keyof EventDetails;
   onChange: (field: keyof EventDetails, value: string) => void;
@@ -697,6 +823,7 @@ function EventField({
       <span className="text-sm font-medium text-[var(--ink)]">{label}</span>
       <input
         className="h-11 rounded-lg border border-[var(--border-strong)] bg-white px-3.5 text-sm text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--iron)] focus:border-[var(--action)] focus:ring-4 focus:ring-[var(--action-ring)]"
+        disabled={disabled}
         name={name}
         onChange={(event) => onChange(name, event.target.value)}
         placeholder={placeholder}
@@ -779,6 +906,7 @@ function SessionEventList({
   isClearing,
   isConfirmingClear,
   isDeleting,
+  isEditingEventDetails,
   onCancelClear,
   onCancelDelete,
   onClear,
@@ -795,6 +923,7 @@ function SessionEventList({
   isClearing: boolean;
   isConfirmingClear: boolean;
   isDeleting: boolean;
+  isEditingEventDetails: boolean;
   onCancelClear: () => void;
   onCancelDelete: () => void;
   onClear: () => void;
@@ -833,7 +962,7 @@ function SessionEventList({
           {!isConfirmingClear && (
             <button
               className="min-h-10 rounded-md border border-[var(--border-strong)] bg-white px-3.5 py-2 text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--subtle)]"
-              disabled={isDeleting}
+              disabled={isDeleting || isEditingEventDetails}
               onClick={onConfirmClear}
               type="button"
             >
@@ -882,7 +1011,7 @@ function SessionEventList({
                 <button
                   aria-pressed={isSelected}
                   className="grid min-w-0 gap-3 px-4 py-4 text-left transition-colors hover:bg-[var(--subtle)] disabled:cursor-wait sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                  disabled={isDeleting}
+                  disabled={isDeleting || isEditingEventDetails}
                   onClick={() => onSelect(record.id)}
                   type="button"
                 >
@@ -912,7 +1041,12 @@ function SessionEventList({
                 <div className="flex items-center border-t border-[var(--border)] px-4 py-3 sm:border-l sm:border-t-0">
                   <button
                     className="min-h-10 rounded-md px-3 py-2 text-xs font-semibold text-[var(--error-text)] transition-colors hover:bg-[var(--error-bg)] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={isConfirmingClear || isClearing || isDeleting}
+                    disabled={
+                      isConfirmingClear ||
+                      isClearing ||
+                      isDeleting ||
+                      isEditingEventDetails
+                    }
                     onClick={() => onConfirmDelete(record.id)}
                     type="button"
                   >
@@ -1065,26 +1199,145 @@ function ClearEventsConfirmation({
   );
 }
 
-function SelectedEventAttendance({ record }: { record: SessionEventRecord }) {
+function SelectedEventAttendance({
+  editedDetails,
+  error,
+  isEditDisabled,
+  isSaving,
+  onCancelEdit,
+  onChange,
+  onEdit,
+  onSave,
+  record,
+  savedMessage,
+}: {
+  editedDetails: EventDetails | null;
+  error: string | null;
+  isEditDisabled: boolean;
+  isSaving: boolean;
+  onCancelEdit: () => void;
+  onChange: (field: keyof EventDetails, value: string) => void;
+  onEdit: () => void;
+  onSave: () => void;
+  record: SessionEventRecord;
+  savedMessage: string | null;
+}) {
   return (
     <section className="carbon-panel border border-[var(--border)] bg-[var(--surface)] p-4">
-      <div>
-        <p className="text-xs font-semibold text-[var(--action)]">
-          Selected event
-        </p>
-        <h2 className="mt-1 text-lg font-semibold tracking-[-0.01em]">
-          Attendance review
-        </h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          {record.attendance.fileName} | {sourceLabel(record.attendance.result.source)}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold text-[var(--action)]">
+            Selected event
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-[-0.01em]">
+            Attendance review
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {record.attendance.fileName} | {sourceLabel(record.attendance.result.source)}
+          </p>
+        </div>
+        {!editedDetails && (
+          <button
+            className="min-h-10 rounded-md border border-[var(--border-strong)] bg-white px-3.5 py-2 text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isEditDisabled}
+            onClick={onEdit}
+            type="button"
+          >
+            Edit event details
+          </button>
+        )}
       </div>
+
+      <div aria-live="polite">
+        {savedMessage && !editedDetails && (
+          <p className="mt-4 rounded-md bg-[var(--success-bg)] px-4 py-3 text-sm text-[var(--success-text)]">
+            {savedMessage}
+          </p>
+        )}
+      </div>
+
+      {editedDetails && (
+        <SavedEventDetailsEditor
+          details={editedDetails}
+          error={error}
+          isSaving={isSaving}
+          onCancel={onCancelEdit}
+          onChange={onChange}
+          onSave={onSave}
+        />
+      )}
 
       <AttendanceReview
         eventDetails={record.details}
         loadedImport={record.attendance}
       />
     </section>
+  );
+}
+
+function SavedEventDetailsEditor({
+  details,
+  error,
+  isSaving,
+  onCancel,
+  onChange,
+  onSave,
+}: {
+  details: EventDetails;
+  error: string | null;
+  isSaving: boolean;
+  onCancel: () => void;
+  onChange: (field: keyof EventDetails, value: string) => void;
+  onSave: () => void;
+}) {
+  return (
+    <form
+      className="mt-5 rounded-lg border border-[var(--border)] bg-[var(--canvas)] p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave();
+      }}
+    >
+      <h3 className="text-sm font-semibold text-[var(--ink)]">
+        Edit event details
+      </h3>
+      <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+        Saving updates this shared event. Attendance and original source rows
+        stay unchanged.
+      </p>
+
+      <EventDetailsFields
+        details={details}
+        disabled={isSaving}
+        onChange={onChange}
+      />
+
+      <div aria-live="polite">
+        {error && (
+          <p className="mt-4 rounded-md bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]">
+            {error}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <button
+          className="min-h-10 rounded-md bg-[var(--action)] px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--action-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSaving}
+          type="submit"
+        >
+          {isSaving ? "Saving changes..." : "Save changes"}
+        </button>
+        <button
+          className="min-h-10 rounded-md border border-[var(--border-strong)] bg-white px-3.5 py-2 text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSaving}
+          onClick={onCancel}
+          type="button"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

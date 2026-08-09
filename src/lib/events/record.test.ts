@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { EventAttendanceImport } from "@/types/event";
 
 import { EMPTY_EVENT_DETAILS } from "./details";
-import { createEventRecord } from "./record";
+import { createEventRecord, updateEventRecordDetails } from "./record";
 
 const lumaAttendance: EventAttendanceImport = {
   fileName: "demo-attendance.csv",
@@ -104,5 +104,54 @@ describe("createEventRecord", () => {
 
     expect(first.ok && first.record.id).toBe("event-1");
     expect(second.ok && second.record.id).toBe("event-2");
+  });
+});
+
+describe("updateEventRecordDetails", () => {
+  const savedRecord = createEventRecord(
+    "event-1",
+    { ...EMPTY_EVENT_DETAILS, name: "Community Demo Night" },
+    lumaAttendance,
+  );
+
+  if (!savedRecord.ok) {
+    throw new Error("Expected the fake saved event to be valid.");
+  }
+
+  it("requires an event name", () => {
+    expect(
+      updateEventRecordDetails(savedRecord.record, {
+        ...savedRecord.record.details,
+        name: "   ",
+      }),
+    ).toEqual({
+      ok: false,
+      message: "Add an event name before saving changes.",
+    });
+  });
+
+  it("updates details without changing identity or attendance", () => {
+    const result = updateEventRecordDetails(savedRecord.record, {
+      name: "  Updated Demo Night  ",
+      eventUrl: "https://lu.ma/updated",
+      instagramUrl: "https://instagram.com/p/updated",
+      startDate: "4/2/2026",
+      endDate: "4/2/2026",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.record.id).toBe(savedRecord.record.id);
+    expect(result.record.attendance).toBe(savedRecord.record.attendance);
+    expect(result.record.details).toEqual({
+      name: "Updated Demo Night",
+      eventUrl: "https://lu.ma/updated",
+      instagramUrl: "https://instagram.com/p/updated",
+      startDate: "4/2/2026",
+      endDate: "4/2/2026",
+    });
   });
 });

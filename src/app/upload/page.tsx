@@ -2,37 +2,37 @@
 
 import { Column, Grid } from "@carbon/react";
 
-import { AttendanceDashboard } from "@/components/attendance-dashboard";
+import { AttendanceCsvImporter } from "@/components/attendance-csv-importer";
 import { SiteNav } from "@/components/site-nav";
 
-export default function Home() {
+export default function UploadPage() {
   return (
     <div className="min-h-[100dvh] bg-[var(--canvas)]">
       <SiteNav />
 
       <main id="main-content" className="pb-12">
-        <section className="attendance-hero" aria-labelledby="dashboard-title">
+        <section className="attendance-hero" aria-labelledby="page-title">
           <Grid fullWidth className="attendance-hero-grid">
             <Column sm={4} md={8} lg={12}>
-              <p className="attendance-eyebrow">Shared attendance history</p>
-              <h1 id="dashboard-title" className="attendance-title">
-                Dashboard
+              <p className="attendance-eyebrow">Internal event operations</p>
+              <h1 id="page-title" className="attendance-title">
+                Tech@NYU event attendance
               </h1>
               <p className="attendance-intro">
-                Track confirmed attendance across the latest semester, academic
-                year, and the full event history.
+                Import a Luma or NYU Engage export, verify every source row, and
+                save confirmed attendance to the shared workspace.
               </p>
             </Column>
           </Grid>
         </section>
 
-        <AttendanceDashboard />
+        <AttendanceCsvImporter />
 
         <Grid fullWidth className="attendance-footer-grid">
           <Column sm={4} md={8} lg={16}>
             <footer className="attendance-footer">
-              <span>Shared Supabase attendance history.</span>
-              <span>KPIs count confirmed attendance, not RSVPs.</span>
+              <span>Saved to Supabase and shared across the operator team.</span>
+              <span>CSV parsing happens in this browser before save.</span>
             </footer>
           </Column>
         </Grid>

@@ -8,6 +8,10 @@ export type CreateEventRecordResult =
   | { ok: true; record: SessionEventRecord }
   | { ok: false; message: string };
 
+export type UpdateEventRecordDetailsResult =
+  | { ok: true; record: SessionEventRecord }
+  | { ok: false; message: string };
+
 export function createEventRecord(
   id: string,
   details: EventDetails,
@@ -46,6 +50,31 @@ export function createEventRecord(
         name: eventName,
       },
       attendance,
+    },
+  };
+}
+
+export function updateEventRecordDetails(
+  record: SessionEventRecord,
+  details: EventDetails,
+): UpdateEventRecordDetailsResult {
+  const eventName = details.name.trim();
+
+  if (!eventName) {
+    return {
+      ok: false,
+      message: "Add an event name before saving changes.",
+    };
+  }
+
+  return {
+    ok: true,
+    record: {
+      ...record,
+      details: {
+        ...details,
+        name: eventName,
+      },
     },
   };
 }

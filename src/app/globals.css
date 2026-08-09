@@ -309,6 +309,195 @@ label[for]:focus-visible {
   font-size: 0.75rem;
 }
 
+.dashboard-content-grid {
+  padding-top: var(--attendance-space-07);
+}
+
+.dashboard-periods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--surface);
+}
+
+.dashboard-period {
+  min-width: 0;
+  padding: var(--attendance-space-07);
+  border: 1px solid var(--border);
+}
+
+.dashboard-period + .dashboard-period {
+  border-left: 0;
+}
+
+.dashboard-period-heading,
+.dashboard-events-heading,
+.dashboard-semester-heading,
+.dashboard-event-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--attendance-space-05);
+}
+
+.dashboard-period-heading {
+  align-items: baseline;
+}
+
+.dashboard-period-heading h2,
+.dashboard-events-heading h2,
+.dashboard-semester-heading h3,
+.dashboard-state h2 {
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-period-heading h2 {
+  font-size: 1rem;
+}
+
+.dashboard-period-heading span,
+.dashboard-events-heading > span,
+.dashboard-semester-heading span {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--attendance-space-06);
+  margin-top: var(--attendance-space-07);
+}
+
+.dashboard-metrics dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.dashboard-metrics dd {
+  margin-top: var(--attendance-space-03);
+  color: var(--ink);
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.dashboard-events {
+  margin-top: var(--attendance-space-07);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dashboard-events-heading {
+  align-items: flex-start;
+  padding: var(--attendance-space-07);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.dashboard-events-heading h2,
+.dashboard-state h2 {
+  font-size: 1.25rem;
+}
+
+.dashboard-events-heading p,
+.dashboard-state p {
+  margin-top: var(--attendance-space-03);
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.dashboard-semester + .dashboard-semester {
+  border-top: 1px solid var(--border-strong);
+}
+
+.dashboard-semester-heading {
+  min-height: 3rem;
+  padding-inline: var(--attendance-space-07);
+  background: var(--subtle);
+}
+
+.dashboard-semester-heading h3 {
+  font-size: 0.875rem;
+}
+
+.dashboard-event-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-event-row {
+  min-height: 4rem;
+  padding: var(--attendance-space-05) var(--attendance-space-07);
+}
+
+.dashboard-event-row + .dashboard-event-row {
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-event-copy {
+  min-width: 0;
+}
+
+.dashboard-event-name,
+.dashboard-event-date {
+  display: block;
+}
+
+.dashboard-event-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-event-date {
+  margin-top: 0.125rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.dashboard-event-attendance {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dashboard-state,
+.dashboard-loading {
+  padding: var(--attendance-space-07);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dashboard-state p {
+  max-width: 40rem;
+  margin-bottom: var(--attendance-space-06);
+}
+
+.dashboard-loading-periods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--attendance-space-07);
+  margin-bottom: var(--attendance-space-09);
+}
+
+.dashboard-loading-period {
+  min-height: 7rem;
+  padding: var(--attendance-space-06);
+  border: 1px solid var(--border);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -328,13 +517,14 @@ label[for]:focus-visible {
   }
 
   .site-mark {
-    width: 5.75rem;
+    width: 4.75rem;
     margin-inline: var(--attendance-space-03);
   }
 
   .site-nav-link {
     min-width: auto;
-    padding-inline: 0.75rem;
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
   }
 
   .attendance-hero {
@@ -353,6 +543,30 @@ label[for]:focus-visible {
 
   .members-workspace {
     padding: var(--attendance-space-05);
+  }
+
+  .dashboard-periods,
+  .dashboard-loading-periods {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-period + .dashboard-period {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+
+  .dashboard-period,
+  .dashboard-events-heading,
+  .dashboard-semester-heading,
+  .dashboard-event-row,
+  .dashboard-state,
+  .dashboard-loading {
+    padding-right: var(--attendance-space-05);
+    padding-left: var(--attendance-space-05);
+  }
+
+  .dashboard-event-row {
+    align-items: flex-start;
   }
 
   .attendance-footer {
