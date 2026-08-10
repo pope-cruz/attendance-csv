@@ -1,6 +1,6 @@
--- Restore the access model used while Vercel protects this internal app.
--- Run this file in the Supabase SQL Editor for the project configured in
--- `.env.local`. It does not recreate tables or modify attendance rows.
+-- EMERGENCY ROLLBACK ONLY: this makes attendance data anonymously accessible
+-- to anyone with the public project URL and anon key.
+-- Run in the Supabase SQL Editor only to restore the old access model.
 
 begin;
 

@@ -221,13 +221,12 @@ begin
 end;
 $$;
 
--- Access is currently enforced by Vercel for this internal tool. Keep the
--- Supabase browser client usable with its anonymous key until per-person auth
--- is needed.
+-- The browser uses one shared Supabase Auth operator account. The public anon
+-- key identifies the project; only an authenticated session may access data.
 alter table public.events enable row level security;
 alter table public.event_rows enable row level security;
 
--- Remove the deferred Supabase Auth experiment when this file is re-run.
+-- Remove policies from earlier access-control experiments when this file is re-run.
 drop policy if exists "allowlist_select_events" on public.events;
 drop policy if exists "allowlist_insert_events" on public.events;
 drop policy if exists "allowlist_update_events" on public.events;
@@ -237,25 +236,33 @@ drop policy if exists "allowlist_insert_event_rows" on public.event_rows;
 drop policy if exists "allowlist_update_event_rows" on public.event_rows;
 drop policy if exists "allowlist_delete_event_rows" on public.event_rows;
 
-drop function if exists public.is_allowed_operator();
-drop table if exists public.allowed_emails;
+drop policy if exists "allow_all_events" on public.events;
+drop policy if exists "allow_all_event_rows" on public.event_rows;
+drop policy if exists "authenticated_all_events" on public.events;
+drop policy if exists "authenticated_all_event_rows" on public.event_rows;
 
-grant usage on schema public to anon, authenticated;
-grant execute on function public.save_event_with_rows(jsonb, jsonb)
-  to anon, authenticated;
+revoke all privileges
+  on table public.events, public.event_rows
+  from anon, public;
+revoke execute on function public.save_event_with_rows(jsonb, jsonb)
+  from anon, public;
+
+grant usage on schema public to authenticated;
 grant select, insert, update, delete
   on table public.events, public.event_rows
-  to anon, authenticated;
+  to authenticated;
+grant execute on function public.save_event_with_rows(jsonb, jsonb)
+  to authenticated;
 
-drop policy if exists "allow_all_events" on public.events;
-create policy "allow_all_events"
+create policy "authenticated_all_events"
   on public.events for all
+  to authenticated
   using (true)
   with check (true);
 
-drop policy if exists "allow_all_event_rows" on public.event_rows;
-create policy "allow_all_event_rows"
+create policy "authenticated_all_event_rows"
   on public.event_rows for all
+  to authenticated
   using (true)
   with check (true);
 

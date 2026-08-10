@@ -180,6 +180,137 @@ label[for]:focus-visible {
   font-size: 0.75rem;
 }
 
+.site-sign-out {
+  min-width: 5rem;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.site-sign-out:hover {
+  background: var(--subtle);
+  color: var(--ink);
+}
+
+.site-sign-out:disabled {
+  color: var(--iron);
+  cursor: wait;
+}
+
+.access-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: var(--attendance-space-07);
+  background:
+    linear-gradient(to right, rgb(22 22 22 / 0.04) 1px, transparent 1px),
+    var(--canvas);
+  background-size: 2rem 100%;
+}
+
+.access-panel {
+  width: min(100%, 28rem);
+  padding: var(--attendance-space-09);
+  border-top: 0.25rem solid var(--ink);
+  background: var(--surface);
+}
+
+.access-panel-status {
+  border: 1px solid var(--border);
+  border-top: 0.25rem solid var(--ink);
+}
+
+.access-eyebrow {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access-panel h1 {
+  margin-top: var(--attendance-space-05);
+  color: var(--ink);
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.access-intro,
+.access-panel-status > p:last-child {
+  margin-top: var(--attendance-space-05);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.access-panel code {
+  color: var(--ink);
+  font-size: 0.8125rem;
+}
+
+.access-form {
+  display: grid;
+  gap: var(--attendance-space-05);
+  margin-top: var(--attendance-space-07);
+}
+
+.access-form label {
+  margin-bottom: calc(var(--attendance-space-05) * -1);
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.access-form input {
+  min-height: 3rem;
+  padding-inline: var(--attendance-space-05);
+  border: 0;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--subtle);
+  color: var(--ink);
+}
+
+.access-form input:focus {
+  outline: 2px solid var(--action);
+  outline-offset: -2px;
+}
+
+.access-form button {
+  min-height: 3rem;
+  border: 0;
+  background: var(--action);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.access-form button:hover {
+  background: var(--action-hover);
+}
+
+.access-form button:disabled {
+  background: var(--iron);
+  cursor: not-allowed;
+}
+
+.access-error {
+  padding: var(--attendance-space-04) var(--attendance-space-05);
+  border-left: 0.25rem solid var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-text);
+  font-size: 0.875rem;
+}
+
+.access-note {
+  margin-top: var(--attendance-space-07);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .attendance-hero {
   padding-block: var(--attendance-space-09);
   background: var(--canvas);
@@ -519,6 +650,19 @@ label[for]:focus-visible {
   .site-mark {
     width: 4.75rem;
     margin-inline: var(--attendance-space-03);
+  }
+
+  .site-sign-out {
+    min-width: auto;
+    padding-inline: 0.5rem;
+  }
+
+  .access-page {
+    padding: var(--attendance-space-05);
+  }
+
+  .access-panel {
+    padding: var(--attendance-space-07);
   }
 
   .site-nav-link {
