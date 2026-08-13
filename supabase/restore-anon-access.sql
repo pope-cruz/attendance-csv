@@ -25,6 +25,8 @@ grant select, insert, update, delete
   to anon, authenticated;
 grant execute on function public.save_event_with_rows(jsonb, jsonb)
   to anon, authenticated;
+grant execute on function public.resolve_event_row(uuid, int, text, text, text, text, text)
+  to anon, authenticated;
 
 drop policy if exists "allow_all_events" on public.events;
 create policy "allow_all_events"

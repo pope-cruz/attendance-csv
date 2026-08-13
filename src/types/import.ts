@@ -22,6 +22,23 @@ export interface ImportIssue {
   rowNumber?: number;
 }
 
+interface RowResolutionAudit {
+  note: string;
+  resolverLabel: string;
+  resolvedBy?: string;
+  resolvedAt: string;
+}
+
+export type RowResolution =
+  | (RowResolutionAudit & {
+      status: "corrected";
+      email: string;
+      name?: string;
+    })
+  | (RowResolutionAudit & {
+      status: "excluded";
+    });
+
 export interface LumaAttendee {
   email: string;
   name?: string;
@@ -37,6 +54,7 @@ export interface LumaImportRow {
   attendee?: LumaAttendee;
   originalRow: CsvSourceRow;
   issues: ImportIssue[];
+  resolution?: RowResolution;
 }
 
 export interface LumaImportResult {
@@ -72,6 +90,7 @@ export interface EngageImportRow {
   attendee: EngageAttendee;
   originalRow: CsvSourceRow;
   issues: ImportIssue[];
+  resolution?: RowResolution;
 }
 
 export interface EngageImportResult {

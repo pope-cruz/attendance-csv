@@ -98,6 +98,51 @@ describe("summarizeAttendance", () => {
     });
   });
 
+  it("moves corrected rows into resolved identity counts while excluded rows stay unresolved", () => {
+    const result: AttendanceImportResult = {
+      source: "luma",
+      data: {
+        rows: [
+          {
+            rowNumber: 2,
+            attendee: { email: "broken", checkedIn: "Yes" },
+            originalRow: { Email: "broken" },
+            issues: [{ code: "invalid_email", severity: "error", message: "Fake invalid email." }],
+            resolution: {
+              status: "corrected",
+              email: "fixed@example.com",
+              note: "Checked the roster.",
+              resolverLabel: "PC",
+              resolvedAt: "2026-08-13T12:00:00Z",
+            },
+          },
+          {
+            rowNumber: 3,
+            attendee: { email: "duplicate@example.com", checkedIn: "Yes" },
+            originalRow: { Email: "duplicate@example.com" },
+            issues: [{ code: "duplicate_email", severity: "error", message: "Fake duplicate email." }],
+            resolution: {
+              status: "excluded",
+              note: "Duplicate registration.",
+              resolverLabel: "PC",
+              resolvedAt: "2026-08-13T12:00:00Z",
+            },
+          },
+        ],
+        fileIssues: [],
+        detectedHeaders: ["Email", "Checked In"],
+        validRowCount: 0,
+        invalidRowCount: 2,
+      },
+    };
+
+    expect(summarizeAttendance(result)).toMatchObject({
+      attendedCount: 2,
+      resolvedIdentityCount: 1,
+      unresolvedIdentityCount: 1,
+    });
+  });
+
   it("returns an empty summary for an unrecognized import", () => {
     expect(
       summarizeAttendance({

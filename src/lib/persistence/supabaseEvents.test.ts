@@ -14,7 +14,12 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-import { loadEventRecords, saveEventRecord } from "./supabaseEvents";
+import {
+  loadEventRecords,
+  resolveEventRow,
+  saveEventRecord,
+  updateEventDetails,
+} from "./supabaseEvents";
 
 const LUMA_EVENT_ID = "11111111-1111-4111-8111-111111111111";
 const ENGAGE_EVENT_ID = "22222222-2222-4222-8222-222222222222";
@@ -394,5 +399,137 @@ describe("loadEventRecords", () => {
     const loadedRecords = await loadEventRecords();
 
     expect(loadedRecords[0]?.attendance.result.data.fileIssues).toEqual([]);
+  });
+
+  it("loads row resolution metadata without replacing source values", async () => {
+    const record = lumaRecord();
+    await saveEventRecord(record);
+    const payload = capturedSavePayload();
+    const sourceRow = payload.rows_payload[1];
+    if (!sourceRow) throw new Error("Expected a fake invalid row.");
+
+    mockLoadQueries(
+      [{ ...payload.event_payload, created_at: "2026-08-07T00:00:00Z" }],
+      [{ ...payload.rows_payload[0] }, {
+        ...sourceRow,
+        resolution_status: "corrected",
+        corrected_email: "blair-fixed@example.com",
+        corrected_name: "Blair Fixed",
+        resolution_note: "Confirmed against the organizer roster.",
+        resolver_label: "PC",
+        resolved_by: "44444444-4444-4444-8444-444444444444",
+        resolved_at: "2026-08-13T12:00:00Z",
+      }],
+    );
+
+    const loaded = await loadEventRecords();
+    const loadedRow = loaded[0]?.attendance.result.data.rows[1];
+    expect(loadedRow?.originalRow).toEqual(sourceRow.original_row);
+    expect(loadedRow?.issues).toEqual(sourceRow.issues);
+    expect(loadedRow?.resolution).toEqual({
+      status: "corrected",
+      email: "blair-fixed@example.com",
+      name: "Blair Fixed",
+      note: "Confirmed against the organizer roster.",
+      resolverLabel: "PC",
+      resolvedBy: "44444444-4444-4444-8444-444444444444",
+      resolvedAt: "2026-08-13T12:00:00Z",
+    });
+  });
+});
+
+describe("updateEventDetails", () => {
+  it("updates only event metadata without invoking row replacement", async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn(() => ({ eq }));
+    supabaseMocks.from.mockReturnValue({ update });
+
+    await updateEventDetails(LUMA_EVENT_ID, lumaRecord().details);
+
+    expect(supabaseMocks.rpc).not.toHaveBeenCalled();
+    expect(supabaseMocks.from).toHaveBeenCalledWith("events");
+    expect(update).toHaveBeenCalledWith({
+      name: "Fake Luma Event",
+      event_url: "https://example.com/luma-event",
+      instagram_url: null,
+      start_date: "2026-08-01",
+      end_date: "2026-08-01",
+    });
+    expect(eq).toHaveBeenCalledWith("id", LUMA_EVENT_ID);
+  });
+});
+
+describe("resolveEventRow", () => {
+  it("normalizes correction input and returns server audit metadata", async () => {
+    supabaseMocks.rpc.mockResolvedValue({
+      data: {
+        resolution_status: "corrected",
+        corrected_email: "fixed@nyu.edu",
+        corrected_name: "Fixed Person",
+        resolution_note: "Checked the roster.",
+        resolver_label: "PC",
+        resolved_by: "44444444-4444-4444-8444-444444444444",
+        resolved_at: "2026-08-13T12:00:00Z",
+      },
+      error: null,
+    });
+
+    await expect(resolveEventRow({
+      eventId: ENGAGE_EVENT_ID,
+      rowNumber: 7,
+      source: "engage",
+      status: "corrected",
+      email: " FIXED@NYU.EDU ",
+      name: " Fixed Person ",
+      note: " Checked the roster. ",
+      resolverLabel: " PC ",
+    })).resolves.toEqual({
+      status: "corrected",
+      email: "fixed@nyu.edu",
+      name: "Fixed Person",
+      note: "Checked the roster.",
+      resolverLabel: "PC",
+      resolvedBy: "44444444-4444-4444-8444-444444444444",
+      resolvedAt: "2026-08-13T12:00:00Z",
+    });
+
+    expect(supabaseMocks.rpc).toHaveBeenCalledWith("resolve_event_row", {
+      event_id_value: ENGAGE_EVENT_ID,
+      row_number_value: 7,
+      resolution_status_value: "corrected",
+      corrected_email_value: "fixed@nyu.edu",
+      corrected_name_value: "Fixed Person",
+      resolution_note_value: "Checked the roster.",
+      resolver_label_value: "PC",
+    });
+  });
+
+  it("sends null identity fields when excluding a row", async () => {
+    supabaseMocks.rpc.mockResolvedValue({
+      data: {
+        resolution_status: "excluded",
+        corrected_email: null,
+        corrected_name: null,
+        resolution_note: "Duplicate registration.",
+        resolver_label: "PC",
+        resolved_by: null,
+        resolved_at: "2026-08-13T12:00:00Z",
+      },
+      error: null,
+    });
+
+    await resolveEventRow({
+      eventId: LUMA_EVENT_ID,
+      rowNumber: 3,
+      source: "luma",
+      status: "excluded",
+      note: "Duplicate registration.",
+      resolverLabel: "PC",
+    });
+
+    expect(supabaseMocks.rpc).toHaveBeenCalledWith("resolve_event_row", expect.objectContaining({
+      corrected_email_value: null,
+      corrected_name_value: null,
+    }));
   });
 });

@@ -175,6 +175,50 @@ describe("buildDashboardSummary", () => {
     });
   });
 
+  it("includes corrected identities and continues to exclude explicitly excluded rows", () => {
+    const record = lumaRecord("resolutions", "Resolution Review", "2026-08-01", []);
+    if (record.attendance.result.source !== "luma") throw new Error("Expected Luma.");
+    const issue = {
+      code: "invalid_email" as const,
+      severity: "error" as const,
+      message: "Fake invalid email.",
+      rowNumber: 2,
+    };
+    record.attendance.result.data.rows.push(
+      {
+        rowNumber: 2,
+        attendee: { email: "broken", checkedIn: "Yes" },
+        originalRow: { Email: "broken" },
+        issues: [issue],
+        resolution: {
+          status: "corrected",
+          email: "fixed@nyu.edu",
+          note: "Checked the roster.",
+          resolverLabel: "PC",
+          resolvedAt: "2026-08-13T12:00:00Z",
+        },
+      },
+      {
+        rowNumber: 3,
+        attendee: { email: "duplicate@nyu.edu", checkedIn: "Yes" },
+        originalRow: { Email: "duplicate@nyu.edu" },
+        issues: [{ ...issue, rowNumber: 3 }],
+        resolution: {
+          status: "excluded",
+          note: "Duplicate registration.",
+          resolverLabel: "PC",
+          resolvedAt: "2026-08-13T12:00:00Z",
+        },
+      },
+    );
+
+    expect(buildDashboardSummary([record]).allTime).toMatchObject({
+      confirmedCheckInCount: 1,
+      uniqueAttendeeCount: 1,
+      excludedAttendedRowCount: 1,
+    });
+  });
+
   it("derives new, returning, and matured 90-day repeat metrics chronologically", () => {
     const summary = buildDashboardSummary([
       lumaRecord("first", "First Event", "2026-01-01", [

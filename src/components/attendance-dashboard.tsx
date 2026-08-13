@@ -329,9 +329,12 @@ export function AttendanceDashboard() {
           <ExecutiveMetrics period={period} />
 
           {period.excludedAttendedRowCount > 0 && (
-            <p className="dashboard-quality-warning" role="status">
-              {period.excludedAttendedRowCount} checked-in {period.excludedAttendedRowCount === 1 ? "row was" : "rows were"} excluded because identity could not be resolved. Review the source imports.
-            </p>
+            <div className="dashboard-quality-warning" role="status">
+              {period.excludedAttendedRowCount} checked-in {period.excludedAttendedRowCount === 1 ? "row is" : "rows are"} excluded because identity could not be resolved.{" "}
+              <Link className="font-semibold underline" href="/review?attendance=attended">
+                Review checked-in rows
+              </Link>
+            </div>
           )}
         </section>
 

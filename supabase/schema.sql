@@ -46,8 +46,39 @@ create table if not exists event_rows (
   rsvp_label text,
   original_row jsonb not null,
   issues jsonb not null default '[]'::jsonb,
+  resolution_status text check (resolution_status in ('corrected','excluded')),
+  corrected_email text,
+  corrected_name text,
+  resolution_note text,
+  resolver_label text,
+  resolved_by uuid references auth.users(id),
+  resolved_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.event_rows
+  add column if not exists resolution_status text,
+  add column if not exists corrected_email text,
+  add column if not exists corrected_name text,
+  add column if not exists resolution_note text,
+  add column if not exists resolver_label text,
+  add column if not exists resolved_by uuid references auth.users(id),
+  add column if not exists resolved_at timestamptz;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'event_rows_resolution_status_check'
+      and conrelid = 'public.event_rows'::regclass
+  ) then
+    alter table public.event_rows
+      add constraint event_rows_resolution_status_check
+      check (resolution_status in ('corrected','excluded'));
+  end if;
+end;
+$$;
 
 create index if not exists idx_event_rows_event_id on event_rows (event_id);
 create index if not exists idx_event_rows_email on event_rows (email);
@@ -66,6 +97,105 @@ begin
   ) then
     raise exception 'Duplicate event_rows exist for an event_id and row_number. Review them before applying this schema.';
   end if;
+end;
+$$;
+
+-- Resolves an imported row without changing its source values, issues, or
+-- attendance fields. Re-resolving replaces the current resolution metadata.
+create or replace function public.resolve_event_row(
+  event_id_value uuid,
+  row_number_value int,
+  resolution_status_value text,
+  corrected_email_value text,
+  corrected_name_value text,
+  resolution_note_value text,
+  resolver_label_value text
+)
+returns public.event_rows
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  target_row public.event_rows;
+  normalized_email text;
+  saved_row public.event_rows;
+begin
+  select * into target_row
+  from public.event_rows
+  where event_id = event_id_value and row_number = row_number_value;
+
+  if not found then
+    raise exception 'Attendance row was not found';
+  end if;
+
+  if not exists (
+    select 1
+    from jsonb_array_elements(coalesce(target_row.issues, '[]'::jsonb)) issue
+    where issue ->> 'severity' = 'error'
+  ) then
+    raise exception 'Only rows with error issues can be resolved';
+  end if;
+
+  if resolution_status_value not in ('corrected', 'excluded') then
+    raise exception 'Resolution must be corrected or excluded';
+  end if;
+
+  if nullif(btrim(resolution_note_value), '') is null then
+    raise exception 'A resolution note is required';
+  end if;
+
+  if nullif(btrim(resolver_label_value), '') is null then
+    raise exception 'A resolver name or initials is required';
+  end if;
+
+  normalized_email := lower(btrim(corrected_email_value));
+
+  if resolution_status_value = 'corrected' then
+    if normalized_email is null or normalized_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+      raise exception 'A valid corrected email is required';
+    end if;
+
+    if target_row.source = 'engage' and normalized_email !~ '@nyu\.edu$' then
+      raise exception 'NYU Engage corrections must use an @nyu.edu email';
+    end if;
+
+    if exists (
+      select 1
+      from public.event_rows other_row
+      where other_row.event_id = event_id_value
+        and other_row.row_number <> row_number_value
+        and other_row.resolution_status is distinct from 'excluded'
+        and lower(btrim(
+          case
+            when other_row.resolution_status = 'corrected' then other_row.corrected_email
+            when not exists (
+              select 1
+              from jsonb_array_elements(coalesce(other_row.issues, '[]'::jsonb)) other_issue
+              where other_issue ->> 'severity' = 'error'
+            ) then other_row.email
+          end
+        )) = normalized_email
+    ) then
+      raise exception 'That email is already used by another usable row in this event';
+    end if;
+  end if;
+
+  update public.event_rows
+  set
+    resolution_status = resolution_status_value,
+    corrected_email = case when resolution_status_value = 'corrected' then normalized_email end,
+    corrected_name = case
+      when resolution_status_value = 'corrected' then nullif(btrim(corrected_name_value), '')
+    end,
+    resolution_note = btrim(resolution_note_value),
+    resolver_label = btrim(resolver_label_value),
+    resolved_by = auth.uid(),
+    resolved_at = now()
+  where event_id = event_id_value and row_number = row_number_value
+  returning * into saved_row;
+
+  return saved_row;
 end;
 $$;
 
@@ -246,12 +376,16 @@ revoke all privileges
   from anon, public;
 revoke execute on function public.save_event_with_rows(jsonb, jsonb)
   from anon, public;
+revoke execute on function public.resolve_event_row(uuid, int, text, text, text, text, text)
+  from anon, public;
 
 grant usage on schema public to authenticated;
 grant select, insert, update, delete
   on table public.events, public.event_rows
   to authenticated;
 grant execute on function public.save_event_with_rows(jsonb, jsonb)
+  to authenticated;
+grant execute on function public.resolve_event_row(uuid, int, text, text, text, text, text)
   to authenticated;
 
 create policy "authenticated_all_events"

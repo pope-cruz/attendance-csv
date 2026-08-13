@@ -431,6 +431,236 @@ label[for]:focus-visible {
   padding-top: var(--attendance-space-07);
 }
 
+.review-content-grid {
+  padding-block: var(--attendance-space-07) var(--attendance-space-10);
+}
+
+.review-workspace {
+  display: grid;
+  gap: var(--attendance-space-06);
+}
+
+.review-summary,
+.review-controls,
+.review-results,
+.review-state {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.review-summary {
+  display: grid;
+  gap: var(--attendance-space-06);
+  padding: var(--attendance-space-06);
+}
+
+.review-summary h2,
+.review-results h2,
+.review-state h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.review-summary p,
+.review-results-heading p,
+.review-state p,
+.review-empty p {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.review-summary dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.review-summary dl > div {
+  min-width: 0;
+  padding: var(--attendance-space-05);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.review-summary dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.review-summary dd {
+  margin-top: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.review-controls {
+  display: grid;
+  gap: var(--attendance-space-06);
+  padding: var(--attendance-space-06);
+}
+
+.review-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.review-view-tabs button {
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 0;
+  border-bottom: 0.125rem solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.review-view-tabs button[aria-pressed="true"] {
+  border-bottom-color: var(--action);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.review-view-tabs button:hover {
+  background: var(--subtle);
+  color: var(--ink);
+}
+
+.review-operator-field,
+.review-filters label {
+  display: grid;
+  gap: 0.375rem;
+  color: var(--slate);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.review-operator-field {
+  max-width: 22rem;
+}
+
+.review-operator-field input,
+.review-filters input[type="search"],
+.review-filters select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.25rem;
+  background: white;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.review-operator-field input:focus,
+.review-filters input:focus,
+.review-filters select:focus {
+  border-color: var(--action);
+  outline: 2px solid var(--action-ring);
+  outline-offset: 1px;
+}
+
+.review-filters {
+  display: grid;
+  grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(10rem, 1fr)) auto;
+  gap: var(--attendance-space-05);
+  align-items: end;
+}
+
+.review-filters .review-checkbox {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.125rem;
+  font-size: 0.8125rem;
+}
+
+.review-results-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--attendance-space-05);
+  padding: var(--attendance-space-06);
+  border-bottom: 1px solid var(--border);
+}
+
+.review-results-heading button,
+.review-pagination button {
+  min-height: 2.5rem;
+  padding-inline: 0.875rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.25rem;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.review-results-heading button:hover,
+.review-pagination button:hover:not(:disabled) {
+  background: var(--subtle);
+}
+
+.review-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-empty,
+.review-state {
+  padding: var(--attendance-space-09) var(--attendance-space-06);
+  text-align: center;
+}
+
+.review-empty h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.review-empty a {
+  display: inline-block;
+  margin-top: var(--attendance-space-05);
+  color: var(--action);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.review-primary-button {
+  min-height: 2.5rem;
+  margin-top: var(--attendance-space-05);
+  padding-inline: 1rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: var(--action);
+  color: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.review-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--attendance-space-05);
+  padding: var(--attendance-space-05) var(--attendance-space-06);
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.review-pagination button:disabled {
+  color: var(--iron);
+  cursor: not-allowed;
+}
+
 .members-workspace {
   padding: var(--attendance-space-07);
   border: 1px solid var(--border);
@@ -810,6 +1040,10 @@ label[for]:focus-visible {
   .dashboard-loading-periods {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .review-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (width < 40rem) {
@@ -864,6 +1098,24 @@ label[for]:focus-visible {
   .dashboard-kpis,
   .dashboard-loading-periods {
     grid-template-columns: 1fr;
+  }
+
+  .review-content-grid {
+    padding-left: var(--attendance-space-05);
+  }
+
+  .review-summary dl,
+  .review-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .review-results-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-pagination {
+    justify-content: space-between;
   }
 
   .dashboard-section-heading,

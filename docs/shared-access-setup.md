@@ -50,8 +50,10 @@ exists until the next step.
 
 ## 4. Lock Supabase to authenticated users
 
-In **Supabase Dashboard → SQL Editor → New query**, paste and run the complete
-contents of [`supabase/enable-shared-auth.sql`](../supabase/enable-shared-auth.sql).
+In **Supabase Dashboard → SQL Editor → New query**, first paste and run the
+complete current contents of [`supabase/schema.sql`](../supabase/schema.sql).
+This applies additive schema changes and creates the row-resolution function.
+Then paste and run [`supabase/enable-shared-auth.sql`](../supabase/enable-shared-auth.sql).
 
 The result table should list privileges for `authenticated` and none for `anon`.
 Refresh the signed-in app and verify existing events still load. Then sign out

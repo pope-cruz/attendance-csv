@@ -17,12 +17,16 @@ revoke all privileges
   from anon, public;
 revoke execute on function public.save_event_with_rows(jsonb, jsonb)
   from anon, public;
+revoke execute on function public.resolve_event_row(uuid, int, text, text, text, text, text)
+  from anon, public;
 
 grant usage on schema public to authenticated;
 grant select, insert, update, delete
   on table public.events, public.event_rows
   to authenticated;
 grant execute on function public.save_event_with_rows(jsonb, jsonb)
+  to authenticated;
+grant execute on function public.resolve_event_row(uuid, int, text, text, text, text, text)
   to authenticated;
 
 create policy "authenticated_all_events"

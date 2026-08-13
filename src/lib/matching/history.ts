@@ -1,7 +1,7 @@
 import { classifyEngageAttendance, classifyLumaAttendance } from "@/lib/attendance/classify";
 import { normalizeEmail } from "@/lib/matching/normalize";
+import { effectiveIdentity } from "@/lib/matching/identity";
 import type { SessionEventRecord } from "@/types/event";
-import type { ImportIssue } from "@/types/import";
 
 export interface MemberEventAttendance {
   eventId: string;
@@ -37,13 +37,6 @@ function eventDateLabel(details: SessionEventRecord["details"]): string {
   return details.startDate || details.endDate || "";
 }
 
-function hasUsableIdentity(
-  email: string | undefined,
-  issues: ImportIssue[],
-): email is string {
-  return Boolean(email?.trim()) && !issues.some((issue) => issue.severity === "error");
-}
-
 function addCandidate(
   candidatesByEmail: Map<string, MemberCandidate[]>,
   email: string,
@@ -72,7 +65,13 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
     if (record.attendance.result.source === "luma") {
       for (const row of record.attendance.result.data.rows) {
         const attendee = row.attendee;
-        if (!hasUsableIdentity(attendee?.email, row.issues)) continue;
+        const identity = effectiveIdentity(
+          attendee?.email,
+          attendee?.name,
+          row.issues,
+          row.resolution,
+        );
+        if (!identity || !attendee) continue;
 
         const classification = classifyLumaAttendance(attendee);
         const attended = classification.status === "attended";
@@ -81,7 +80,7 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
         );
         const rsvpLabel = rsvpParts.length > 0 ? rsvpParts.join(" • ") : undefined;
 
-        addCandidate(candidatesByEmail, attendee.email, attendee.name, {
+        addCandidate(candidatesByEmail, identity.email, identity.name, {
           eventId: record.id,
           eventName: record.details.name,
           eventDate: dateLabel,
@@ -97,12 +96,18 @@ export function groupByMember(records: SessionEventRecord[]): Member[] {
     if (record.attendance.result.source === "engage") {
       for (const row of record.attendance.result.data.rows) {
         const attendee = row.attendee;
-        if (!hasUsableIdentity(attendee.email, row.issues)) continue;
+        const identity = effectiveIdentity(
+          attendee.email,
+          attendee.name,
+          row.issues,
+          row.resolution,
+        );
+        if (!identity) continue;
 
         const classification = classifyEngageAttendance(attendee);
         const attended = classification.status === "attended";
 
-        addCandidate(candidatesByEmail, attendee.email, attendee.name, {
+        addCandidate(candidatesByEmail, identity.email, identity.name, {
           eventId: record.id,
           eventName: record.details.name,
           eventDate: dateLabel,

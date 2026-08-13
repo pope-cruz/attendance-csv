@@ -1,7 +1,7 @@
 import { classifyEngageAttendance, classifyLumaAttendance } from "@/lib/attendance/classify";
 import { normalizeEmail } from "@/lib/matching/normalize";
+import { effectiveIdentity } from "@/lib/matching/identity";
 import type { EventDetails, SessionEventRecord } from "@/types/event";
-import type { ImportIssue } from "@/types/import";
 
 export const ATTENDANCE_BASELINE = 31;
 export const ATTENDANCE_TARGET = ATTENDANCE_BASELINE * 1.25;
@@ -157,13 +157,6 @@ function dateTimestamp(date: CalendarDate): number {
   return Date.UTC(date.year, date.month - 1, date.day);
 }
 
-function hasUsableIdentity(
-  email: string | undefined,
-  issues: ImportIssue[],
-): email is string {
-  return Boolean(email?.trim()) && !issues.some((issue) => issue.severity === "error");
-}
-
 function normalizedStatus(value: string | undefined): string {
   return value?.trim().toLowerCase() ?? "";
 }
@@ -207,17 +200,16 @@ function buildEventFacts(record: SessionEventRecord): EventFacts {
   let excludedAttendedRowCount = 0;
 
   function addPerson(
-    email: string | undefined,
-    issues: ImportIssue[],
+    identity: ReturnType<typeof effectiveIdentity>,
     attended: boolean,
     rsvped: boolean,
   ): void {
-    if (!hasUsableIdentity(email, issues)) {
+    if (!identity) {
       if (attended) excludedAttendedRowCount += 1;
       return;
     }
 
-    const normalizedEmail = normalizeEmail(email);
+    const normalizedEmail = normalizeEmail(identity.email);
     if (!normalizedEmail) {
       if (attended) excludedAttendedRowCount += 1;
       return;
@@ -236,8 +228,12 @@ function buildEventFacts(record: SessionEventRecord): EventFacts {
       const attended =
         classifyLumaAttendance(attendee).status === "attended";
       addPerson(
-        attendee?.email,
-        row.issues,
+        effectiveIdentity(
+          attendee?.email,
+          attendee?.name,
+          row.issues,
+          row.resolution,
+        ),
         attended,
         attendee ? isLumaRsvp(attendee, attended) : false,
       );
@@ -250,8 +246,12 @@ function buildEventFacts(record: SessionEventRecord): EventFacts {
       const attended =
         classifyEngageAttendance(attendee).status === "attended";
       addPerson(
-        attendee.email,
-        row.issues,
+        effectiveIdentity(
+          attendee.email,
+          attendee.name,
+          row.issues,
+          row.resolution,
+        ),
         attended,
         isEngageRsvp(attendee.attendanceStatus, attended),
       );

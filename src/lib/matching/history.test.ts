@@ -238,6 +238,49 @@ describe("groupByMember", () => {
     ]);
   });
 
+  it("uses corrected identities and keeps excluded rows out of history", () => {
+    const issue: ImportIssue = {
+      code: "invalid_email",
+      severity: "error",
+      message: "Fake invalid email",
+      rowNumber: 2,
+    };
+    const corrected = lumaRecord("corrected", "Corrected Event", [{
+      email: "broken",
+      name: "Imported Name",
+      checkedIn: "Yes",
+      issues: [issue],
+    }]);
+    const excluded = lumaRecord("excluded", "Excluded Event", [{
+      email: "excluded@example.com",
+      checkedIn: "Yes",
+      issues: [issue],
+    }]);
+    if (corrected.attendance.result.source !== "luma" || excluded.attendance.result.source !== "luma") {
+      throw new Error("Expected Luma records.");
+    }
+    corrected.attendance.result.data.rows[0]!.resolution = {
+      status: "corrected",
+      email: "fixed@example.com",
+      name: "Fixed Name",
+      note: "Checked the roster.",
+      resolverLabel: "PC",
+      resolvedAt: "2026-08-13T12:00:00Z",
+    };
+    excluded.attendance.result.data.rows[0]!.resolution = {
+      status: "excluded",
+      note: "Duplicate registration.",
+      resolverLabel: "PC",
+      resolvedAt: "2026-08-13T12:00:00Z",
+    };
+
+    expect(groupByMember([corrected, excluded])).toMatchObject([{
+      normalizedEmail: "fixed@example.com",
+      displayName: "Fixed Name",
+      attendedCount: 1,
+    }]);
+  });
+
   it("returns empty for no records", () => {
     expect(groupByMember([])).toEqual([]);
   });

@@ -11,6 +11,7 @@ import techAtNyuLogo from "../../black_bg_logo.png";
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
   { href: "/upload", label: "Upload" },
+  { href: "/review", label: "Review" },
   { href: "/members", label: "Members" },
 ] as const;
 

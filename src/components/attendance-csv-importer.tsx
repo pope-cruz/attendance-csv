@@ -31,7 +31,10 @@ import {
   deleteEventRecord,
   loadEventRecords,
   saveEventRecord,
+  updateEventDetails,
 } from "@/lib/persistence";
+import { buildReviewQueue } from "@/lib/review/queue";
+import Link from "next/link";
 import { parseAttendanceCsv } from "@/lib/csv/import";
 import type {
   EventAttendanceImport,
@@ -178,6 +181,7 @@ export function AttendanceCsvImporter() {
   const [lastAddedEventName, setLastAddedEventName] = useState<string | null>(
     null,
   );
+  const [lastAddedReviewCount, setLastAddedReviewCount] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -220,6 +224,7 @@ export function AttendanceCsvImporter() {
     setFileError(null);
     setRecordError(null);
     setLastAddedEventName(null);
+    setLastAddedReviewCount(0);
 
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setFileError("Choose a CSV file exported from Luma or NYU Engage.");
@@ -325,7 +330,7 @@ export function AttendanceCsvImporter() {
     setIsSavingEventDetails(true);
     setEventDetailsUpdateError(null);
     try {
-      await saveEventRecord(result.record);
+      await updateEventDetails(result.record.id, result.record.details);
       setSessionEvents((currentEvents) =>
         currentEvents.map((record) =>
           record.id === result.record.id ? result.record : record,
@@ -334,6 +339,7 @@ export function AttendanceCsvImporter() {
       setEditedEventDetails(null);
       setEventDetailsUpdateMessage("Event details saved.");
       setLastAddedEventName(null);
+      setLastAddedReviewCount(0);
     } catch {
       setEventDetailsUpdateError(
         "These event details could not be saved. Your changes are still open so you can try again.",
@@ -349,6 +355,7 @@ export function AttendanceCsvImporter() {
     setFileError(null);
     setRecordError(null);
     setLastAddedEventName(null);
+    setLastAddedReviewCount(0);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -382,6 +389,9 @@ export function AttendanceCsvImporter() {
       setSessionEvents((currentEvents) => [...currentEvents, result.record]);
       setSelectedEventId(result.record.id);
       setLastAddedEventName(result.record.details.name);
+      setLastAddedReviewCount(
+        buildReviewQueue([result.record]).filter((row) => !row.resolution).length,
+      );
       setRecordError(null);
       setEventDetails(EMPTY_EVENT_DETAILS);
       setLoadedImport(null);
@@ -406,6 +416,7 @@ export function AttendanceCsvImporter() {
       setSessionEvents([]);
       setSelectedEventId(null);
       setLastAddedEventName(null);
+      setLastAddedReviewCount(0);
       setPersistenceError(null);
       setDeleteError(null);
       setEventIdPendingDeletion(null);
@@ -438,6 +449,7 @@ export function AttendanceCsvImporter() {
       setSelectedEventId(nextCollection.selectedEventId);
       setEventIdPendingDeletion(null);
       setLastAddedEventName(null);
+      setLastAddedReviewCount(0);
       if (selectedEventId === eventId) {
         setEditedEventDetails(null);
         setEventDetailsUpdateError(null);
@@ -636,6 +648,7 @@ export function AttendanceCsvImporter() {
           <Column sm={4} md={8} lg={16}>
             <SessionEventList
               lastAddedEventName={lastAddedEventName}
+              lastAddedReviewCount={lastAddedReviewCount}
               deleteError={deleteError}
               eventIdPendingDeletion={eventIdPendingDeletion}
               isClearing={isClearingEvents}
@@ -901,6 +914,7 @@ function ImportPreview({
 
 function SessionEventList({
   lastAddedEventName,
+  lastAddedReviewCount,
   deleteError,
   eventIdPendingDeletion,
   isClearing,
@@ -918,6 +932,7 @@ function SessionEventList({
   selectedEventId,
 }: {
   lastAddedEventName: string | null;
+  lastAddedReviewCount: number;
   deleteError: string | null;
   eventIdPendingDeletion: string | null;
   isClearing: boolean;
@@ -941,8 +956,17 @@ function SessionEventList({
           aria-live="polite"
           className="mb-5 rounded-lg bg-[var(--success-bg)] px-4 py-3 text-sm text-[var(--success-text)]"
         >
-          {lastAddedEventName} was added and saved. The form is
-          ready for another event.
+          {lastAddedEventName} was added and saved.{" "}
+          {lastAddedReviewCount > 0 ? (
+            <>
+              {lastAddedReviewCount} {lastAddedReviewCount === 1 ? "row needs" : "rows need"} review.{" "}
+              <Link className="font-semibold underline" href={`/review?event=${encodeURIComponent(selectedEventId ?? "")}`}>
+                Open review queue
+              </Link>
+            </>
+          ) : (
+            "The form is ready for another event."
+          )}
         </p>
       )}
 
@@ -996,6 +1020,7 @@ function SessionEventList({
       <ul className="mt-5 grid gap-2">
         {records.map((record) => {
           const attendanceSummary = summarizeAttendance(record.attendance.result);
+          const unresolvedCount = buildReviewQueue([record]).filter((row) => !row.resolution).length;
           const isSelected = record.id === selectedEventId;
 
           return (
@@ -1038,7 +1063,15 @@ function SessionEventList({
                     </span>
                   </span>
                 </button>
-                <div className="flex items-center border-t border-[var(--border)] px-4 py-3 sm:border-l sm:border-t-0">
+                <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] px-4 py-3 sm:border-l sm:border-t-0">
+                  {unresolvedCount > 0 && (
+                    <Link
+                      className="min-h-10 rounded-md px-3 py-2 text-xs font-semibold text-[var(--error-text)] underline hover:bg-[var(--error-bg)]"
+                      href={`/review?event=${encodeURIComponent(record.id)}`}
+                    >
+                      Review {unresolvedCount} {unresolvedCount === 1 ? "row" : "rows"}
+                    </Link>
+                  )}
                   <button
                     className="min-h-10 rounded-md px-3 py-2 text-xs font-semibold text-[var(--error-text)] transition-colors hover:bg-[var(--error-bg)] disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={

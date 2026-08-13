@@ -2,28 +2,10 @@ import type {
   AttendanceStatus,
   EventAttendanceSummary,
 } from "@/types/attendance";
-import type { AttendanceImportResult, ImportIssue } from "@/types/import";
+import type { AttendanceImportResult } from "@/types/import";
 
 import { classifyEngageAttendance, classifyLumaAttendance } from "./classify";
-
-const IDENTITY_ISSUE_CODES = new Set<ImportIssue["code"]>([
-  "missing_email_header",
-  "missing_email",
-  "missing_nyu_email",
-  "conflicting_nyu_emails",
-  "invalid_email",
-  "duplicate_email",
-]);
-
-function hasResolvedIdentity(
-  email: string | undefined,
-  issues: ImportIssue[],
-): boolean {
-  return (
-    Boolean(email) &&
-    !issues.some((issue) => IDENTITY_ISSUE_CODES.has(issue.code))
-  );
-}
+import { effectiveIdentity } from "@/lib/matching/identity";
 
 function emptySummary(): EventAttendanceSummary {
   return {
@@ -68,7 +50,14 @@ export function summarizeAttendance(
       addClassification(
         summary,
         classifyLumaAttendance(row.attendee).status,
-        hasResolvedIdentity(row.attendee?.email, row.issues),
+        Boolean(
+          effectiveIdentity(
+            row.attendee?.email,
+            row.attendee?.name,
+            row.issues,
+            row.resolution,
+          ),
+        ),
       );
     }
   }
@@ -78,7 +67,14 @@ export function summarizeAttendance(
       addClassification(
         summary,
         classifyEngageAttendance(row.attendee).status,
-        hasResolvedIdentity(row.attendee.email, row.issues),
+        Boolean(
+          effectiveIdentity(
+            row.attendee.email,
+            row.attendee.name,
+            row.issues,
+            row.resolution,
+          ),
+        ),
       );
     }
   }

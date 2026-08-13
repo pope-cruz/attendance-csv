@@ -1,7 +1,13 @@
 import { classifyEngageAttendance, classifyLumaAttendance } from "@/lib/attendance/classify";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { SessionEventRecord } from "@/types/event";
-import type { AttendanceImportResult, ImportIssue } from "@/types/import";
+import type { EventDetails } from "@/types/event";
+import type {
+  AttendanceImportResult,
+  CsvSource,
+  ImportIssue,
+  RowResolution,
+} from "@/types/import";
 
 // Supabase tables and persistence functions are defined in supabase/schema.sql.
 // This module mirrors src/lib/persistence/events.ts signatures so callers don't change.
@@ -26,7 +32,65 @@ type EventRow = {
   rsvp_label: string | null;
   original_row: Record<string, unknown>;
   issues: unknown;
+  resolution_status?: "corrected" | "excluded" | null;
+  corrected_email?: string | null;
+  corrected_name?: string | null;
+  resolution_note?: string | null;
+  resolver_label?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
 };
+
+export interface ResolveEventRowInput {
+  eventId: string;
+  rowNumber: number;
+  source: CsvSource;
+  status: RowResolution["status"];
+  email?: string;
+  name?: string;
+  note: string;
+  resolverLabel: string;
+}
+
+function rowResolution(row: EventRow): RowResolution | undefined {
+  if (
+    !row.resolution_status ||
+    !row.resolution_note ||
+    !row.resolver_label ||
+    !row.resolved_at
+  ) {
+    return undefined;
+  }
+
+  const audit = {
+    note: row.resolution_note,
+    resolverLabel: row.resolver_label,
+    ...(row.resolved_by ? { resolvedBy: row.resolved_by } : {}),
+    resolvedAt: row.resolved_at,
+  };
+
+  if (row.resolution_status === "corrected" && row.corrected_email) {
+    return {
+      status: "corrected",
+      email: row.corrected_email,
+      ...(row.corrected_name ? { name: row.corrected_name } : {}),
+      ...audit,
+    };
+  }
+
+  if (row.resolution_status === "excluded") {
+    return { status: "excluded", ...audit };
+  }
+
+  return undefined;
+}
+
+function resolutionProperty(
+  row: EventRow,
+): { resolution: RowResolution } | Record<string, never> {
+  const resolution = rowResolution(row);
+  return resolution ? { resolution } : {};
+}
 
 type EventPayload = {
   id: string;
@@ -200,7 +264,8 @@ export async function loadEventRecords(): Promise<SessionEventRecord[]> {
                     }
                   : undefined,
                 originalRow: r.original_row as Record<string, string | string[]>,
-                issues: (r.issues as []) ?? [],
+                issues: (r.issues as ImportIssue[] | null) ?? [],
+                ...resolutionProperty(r),
               })),
               fileIssues,
               detectedHeaders: (e.detected_headers as string[]) ?? [],
@@ -243,7 +308,8 @@ export async function loadEventRecords(): Promise<SessionEventRecord[]> {
                 ...(r.attendance_status ? { attendanceStatus: r.attendance_status } : {}),
               },
               originalRow: r.original_row as Record<string, string | string[]>,
-              issues: (r.issues as []) ?? [],
+              issues: (r.issues as ImportIssue[] | null) ?? [],
+              ...resolutionProperty(r),
             })),
             fileIssues,
             detectedHeaders: (e.detected_headers as string[]) ?? [],
@@ -263,6 +329,61 @@ export async function saveEventRecord(record: SessionEventRecord): Promise<void>
 
   const { error } = await supabase.rpc("save_event_with_rows", payload);
   if (error) throw new Error(`Event could not be saved: ${error.message}`);
+}
+
+export async function updateEventDetails(
+  eventId: string,
+  details: EventDetails,
+): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const { error } = await supabase
+    .from("events")
+    .update({
+      name: details.name,
+      event_url: details.eventUrl || null,
+      instagram_url: details.instagramUrl || null,
+      start_date: details.startDate || null,
+      end_date: details.endDate || null,
+    })
+    .eq("id", eventId);
+
+  if (error) throw new Error(`Event details could not be saved: ${error.message}`);
+}
+
+export async function resolveEventRow(
+  input: ResolveEventRowInput,
+): Promise<RowResolution> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const { data, error } = await supabase.rpc("resolve_event_row", {
+    event_id_value: input.eventId,
+    row_number_value: input.rowNumber,
+    resolution_status_value: input.status,
+    corrected_email_value:
+      input.status === "corrected" ? input.email?.trim().toLowerCase() || null : null,
+    corrected_name_value:
+      input.status === "corrected" ? input.name?.trim() || null : null,
+    resolution_note_value: input.note.trim(),
+    resolver_label_value: input.resolverLabel.trim(),
+  });
+
+  if (error) throw new Error(`Row could not be resolved: ${error.message}`);
+
+  const value = Array.isArray(data) ? data[0] : data;
+  if (!value || typeof value !== "object") {
+    throw new Error("Row was saved but its resolution could not be read.");
+  }
+
+  const row = value as EventRow;
+  const resolution = rowResolution(row);
+  if (!resolution) {
+    throw new Error("Row was saved without a valid resolution.");
+  }
+
+  return resolution;
 }
 
 export async function deleteEventRecord(eventId: string): Promise<void> {
