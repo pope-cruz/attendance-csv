@@ -2,9 +2,12 @@
 
 import { Button, Column, Grid, SkeletonText } from "@carbon/react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  ATTENDANCE_BASELINE,
+  ATTENDANCE_STRETCH_TARGET,
+  ATTENDANCE_TARGET,
   buildDashboardSummary,
   type DashboardEventSummary,
   type DashboardPeriodStats,
@@ -12,46 +15,173 @@ import {
 import { loadEventRecords } from "@/lib/persistence";
 import type { SessionEventRecord } from "@/types/event";
 
-function PeriodStats({ period }: { period: DashboardPeriodStats }) {
+type ReportingPeriod = "latestSemester" | "academicYear" | "allTime";
+
+function formatPercent(value: number | null): string {
+  return value === null ? "—" : `${(value * 100).toFixed(0)}%`;
+}
+
+function growthLabel(value: number): string {
+  const percentage = Math.abs(value * 100).toFixed(0);
+  if (value > 0) return `+${percentage}% vs baseline`;
+  if (value < 0) return `−${percentage}% vs baseline`;
+  return "At baseline";
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
   return (
-    <section className="dashboard-period" aria-label={`${period.label} attendance`}>
-      <div className="dashboard-period-heading">
-        <h2>{period.label}</h2>
-        <span>
-          {period.available
-            ? `${period.eventCount} ${period.eventCount === 1 ? "event" : "events"}`
-            : "No dated events"}
-        </span>
+    <div className="dashboard-kpi-card">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+      <p>{detail}</p>
+    </div>
+  );
+}
+
+function ExecutiveMetrics({ period }: { period: DashboardPeriodStats }) {
+  return (
+    <dl className="dashboard-kpis">
+      <MetricCard
+        label="Average attendance"
+        value={period.averageAttendance.toFixed(1)}
+        detail={growthLabel(period.attendanceGrowthRate)}
+      />
+      <MetricCard
+        label="Unique attendees"
+        value={String(period.uniqueAttendeeCount)}
+        detail="Distinct people in this period"
+      />
+      <MetricCard
+        label="Confirmed check-ins"
+        value={String(period.confirmedCheckInCount)}
+        detail={`Across ${period.eventCount} ${period.eventCount === 1 ? "event" : "events"}`}
+      />
+      <MetricCard
+        label="RSVP → attendance"
+        value={formatPercent(period.showRate)}
+        detail={`${period.confirmedCheckInCount} of ${period.rsvpCount} eligible RSVPs`}
+      />
+      <MetricCard
+        label="New attendees"
+        value={String(period.newAttendeeCount)}
+        detail="First attendance in recorded history"
+      />
+      <MetricCard
+        label="Returning check-ins"
+        value={formatPercent(period.returningCheckInRate)}
+        detail="Check-ins from prior attendees"
+      />
+      <MetricCard
+        label="90-day repeat rate"
+        value={formatPercent(period.repeatAttendanceRate)}
+        detail={
+          period.repeatAttendanceEligibleCount > 0
+            ? `${period.repeatAttendanceEligibleCount} eligible new attendees`
+            : "Waiting for a matured cohort"
+        }
+      />
+    </dl>
+  );
+}
+
+function AttendanceTrend({ events }: { events: DashboardEventSummary[] }) {
+  if (events.length === 0) return null;
+
+  const scaleMaximum = Math.max(
+    ATTENDANCE_STRETCH_TARGET,
+    ...events.map((event) => event.attendedCount),
+  );
+
+  return (
+    <section className="dashboard-analysis" aria-labelledby="trend-heading">
+      <div className="dashboard-section-heading">
+        <div>
+          <h2 id="trend-heading">Attendance trend</h2>
+          <p>Event attendance and three-event rolling average for the latest semester.</p>
+        </div>
+        <div className="dashboard-target-legend" aria-label="Attendance targets">
+          <span>Baseline {ATTENDANCE_BASELINE}</span>
+          <span>Target {ATTENDANCE_TARGET.toFixed(1)}</span>
+          <span>Stretch {ATTENDANCE_STRETCH_TARGET.toFixed(1)}</span>
+        </div>
       </div>
-      <dl className="dashboard-metrics">
-        <div>
-          <dt>Unique attendees</dt>
-          <dd>{period.available ? period.uniqueAttendeeCount : "\u2014"}</dd>
-        </div>
-        <div>
-          <dt>Average per event</dt>
-          <dd>{period.available ? period.averageAttendance.toFixed(1) : "\u2014"}</dd>
-        </div>
-      </dl>
+
+      <ol className="dashboard-trend-list">
+        {events.map((event) => (
+          <li key={event.id} className="dashboard-trend-row">
+            <div className="dashboard-trend-label">
+              <span>{event.name}</span>
+              <small>{event.dateLabel}</small>
+            </div>
+            <div className="dashboard-trend-track" aria-hidden="true">
+              <span
+                className="dashboard-trend-baseline"
+                style={{ left: `${(ATTENDANCE_BASELINE / scaleMaximum) * 100}%` }}
+              />
+              <span
+                className="dashboard-trend-bar"
+                style={{ width: `${(event.attendedCount / scaleMaximum) * 100}%` }}
+              />
+              <span
+                className="dashboard-trend-average"
+                style={{ left: `${((event.rollingAverage ?? 0) / scaleMaximum) * 100}%` }}
+              />
+            </div>
+            <div className="dashboard-trend-value">
+              <strong>{event.attendedCount}</strong>
+              <span>avg {(event.rollingAverage ?? 0).toFixed(1)}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
 
 function EventList({ events }: { events: DashboardEventSummary[] }) {
   return (
-    <ul className="dashboard-event-list">
-      {events.map((event) => (
-        <li key={event.id} className="dashboard-event-row">
-          <div className="dashboard-event-copy">
-            <span className="dashboard-event-name">{event.name}</span>
-            <span className="dashboard-event-date">{event.dateLabel}</span>
-          </div>
-          <span className="dashboard-event-attendance">
-            {event.attendedCount} attended
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="dashboard-event-table-wrap">
+      <table className="dashboard-event-table">
+        <thead>
+          <tr>
+            <th scope="col">Event</th>
+            <th scope="col">Attendance</th>
+            <th scope="col">RSVPs</th>
+            <th scope="col">Show rate</th>
+            <th scope="col">New</th>
+            <th scope="col">Returning</th>
+            <th scope="col">Vs 31</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((event) => (
+            <tr key={event.id}>
+              <th scope="row">
+                <span>{event.name}</span>
+                <small>{event.dateLabel}</small>
+              </th>
+              <td>{event.attendedCount}</td>
+              <td>{event.rsvpCount}</td>
+              <td>{formatPercent(event.showRate)}</td>
+              <td>{event.newAttendeeCount}</td>
+              <td>{event.returningAttendeeCount}</td>
+              <td className={event.attendedCount >= ATTENDANCE_BASELINE ? "dashboard-positive" : ""}>
+                {event.attendedCount >= ATTENDANCE_BASELINE ? "+" : ""}
+                {event.attendedCount - ATTENDANCE_BASELINE}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -59,7 +189,7 @@ function DashboardLoading() {
   return (
     <div className="dashboard-loading" aria-label="Loading dashboard">
       <div className="dashboard-loading-periods">
-        {[0, 1, 2].map((item) => (
+        {[0, 1, 2, 3].map((item) => (
           <div key={item} className="dashboard-loading-period">
             <SkeletonText heading width="40%" />
             <SkeletonText width="65%" />
@@ -77,6 +207,8 @@ export function AttendanceDashboard() {
   const [records, setRecords] = useState<SessionEventRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [reportingPeriod, setReportingPeriod] =
+    useState<ReportingPeriod>("latestSemester");
 
   const retry = useCallback(() => {
     setRecords(null);
@@ -103,6 +235,11 @@ export function AttendanceDashboard() {
       cancelled = true;
     };
   }, [loadAttempt]);
+
+  const summary = useMemo(
+    () => (records ? buildDashboardSummary(records) : null),
+    [records],
+  );
 
   if (error) {
     return (
@@ -148,27 +285,63 @@ export function AttendanceDashboard() {
     );
   }
 
-  const summary = buildDashboardSummary(records);
-  const periods = [
-    summary.latestSemester,
-    summary.academicYear,
-    summary.allTime,
+  if (!summary) return null;
+  const period = summary[reportingPeriod];
+  const periodOptions: { key: ReportingPeriod; label: string; disabled: boolean }[] = [
+    {
+      key: "latestSemester",
+      label: summary.latestSemester.label,
+      disabled: !summary.latestSemester.available,
+    },
+    {
+      key: "academicYear",
+      label: summary.academicYear.label,
+      disabled: !summary.academicYear.available,
+    },
+    { key: "allTime", label: "All time", disabled: false },
   ];
 
   return (
     <Grid fullWidth className="attendance-shell-grid dashboard-content-grid">
       <Column sm={4} md={8} lg={16}>
-        <div className="dashboard-periods">
-          {periods.map((period) => (
-            <PeriodStats key={period.label} period={period} />
-          ))}
-        </div>
+        <section className="dashboard-executive" aria-labelledby="scorecard-heading">
+          <div className="dashboard-section-heading">
+            <div>
+              <p className="dashboard-section-eyebrow">Community scorecard</p>
+              <h2 id="scorecard-heading">{period.label}</h2>
+              <p>Confirmed people only. Invalid or ambiguous identities are excluded.</p>
+            </div>
+            <div className="dashboard-period-selector" aria-label="Reporting period">
+              {periodOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  disabled={option.disabled}
+                  aria-pressed={reportingPeriod === option.key}
+                  onClick={() => setReportingPeriod(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <ExecutiveMetrics period={period} />
+
+          {period.excludedAttendedRowCount > 0 && (
+            <p className="dashboard-quality-warning" role="status">
+              {period.excludedAttendedRowCount} checked-in {period.excludedAttendedRowCount === 1 ? "row was" : "rows were"} excluded because identity could not be resolved. Review the source imports.
+            </p>
+          )}
+        </section>
+
+        <AttendanceTrend events={summary.latestSemesterTrend} />
 
         <section className="dashboard-events" aria-labelledby="events-heading">
-          <div className="dashboard-events-heading">
+          <div className="dashboard-section-heading dashboard-events-heading">
             <div>
-              <h2 id="events-heading">Events</h2>
-              <p>Confirmed attendance only. RSVPs are excluded.</p>
+              <h2 id="events-heading">Event comparison</h2>
+              <p>Use sample size, show rate, and attendee mix together when judging an event.</p>
             </div>
             <span>
               {records.length} {records.length === 1 ? "event" : "events"}
@@ -193,8 +366,7 @@ export function AttendanceDashboard() {
                 <div className="dashboard-semester-heading">
                   <h3>Date needed</h3>
                   <span>
-                    {summary.undatedEvents.length}{" "}
-                    {summary.undatedEvents.length === 1 ? "event" : "events"}
+                    {summary.undatedEvents.length} {summary.undatedEvents.length === 1 ? "event" : "events"}
                   </span>
                 </div>
                 <EventList events={summary.undatedEvents} />

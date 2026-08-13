@@ -16,6 +16,9 @@
   --action-ring: rgb(15 98 254 / 0.2);
   --success-bg: #defbe6;
   --success-text: #0e6027;
+  --warning-bg: #fff8e1;
+  --warning-border: #f1c21b;
+  --warning-text: #684e00;
   --error-bg: #fff1f1;
   --error-border: #da1e28;
   --error-text: #a2191f;
@@ -444,38 +447,22 @@ label[for]:focus-visible {
   padding-top: var(--attendance-space-07);
 }
 
-.dashboard-periods {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  background: var(--surface);
-}
-
-.dashboard-period {
-  min-width: 0;
-  padding: var(--attendance-space-07);
-  border: 1px solid var(--border);
-}
-
-.dashboard-period + .dashboard-period {
-  border-left: 0;
-}
-
-.dashboard-period-heading,
-.dashboard-events-heading,
+.dashboard-section-heading,
 .dashboard-semester-heading,
-.dashboard-event-row {
+.dashboard-trend-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--attendance-space-05);
 }
 
-.dashboard-period-heading {
-  align-items: baseline;
+.dashboard-section-heading {
+  align-items: flex-start;
+  padding: var(--attendance-space-07);
+  border-bottom: 1px solid var(--border-strong);
 }
 
-.dashboard-period-heading h2,
-.dashboard-events-heading h2,
+.dashboard-section-heading h2,
 .dashboard-semester-heading h3,
 .dashboard-state h2 {
   color: var(--ink);
@@ -483,11 +470,11 @@ label[for]:focus-visible {
   letter-spacing: -0.01em;
 }
 
-.dashboard-period-heading h2 {
-  font-size: 1rem;
+.dashboard-section-heading h2,
+.dashboard-state h2 {
+  font-size: 1.25rem;
 }
 
-.dashboard-period-heading span,
 .dashboard-events-heading > span,
 .dashboard-semester-heading span {
   flex-shrink: 0;
@@ -495,20 +482,91 @@ label[for]:focus-visible {
   font-size: 0.75rem;
 }
 
-.dashboard-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--attendance-space-06);
+.dashboard-section-heading p {
+  max-width: 48rem;
+  margin-top: var(--attendance-space-03);
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.dashboard-section-eyebrow {
+  margin: 0 0 var(--attendance-space-03) !important;
+  color: var(--slate) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-executive,
+.dashboard-analysis,
+.dashboard-events {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dashboard-analysis,
+.dashboard-events {
   margin-top: var(--attendance-space-07);
 }
 
-.dashboard-metrics dt {
+.dashboard-period-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 1px solid var(--border);
+  background: var(--subtle);
+}
+
+.dashboard-period-selector button {
+  min-height: 2rem;
+  padding-inline: var(--attendance-space-04);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dashboard-period-selector button[aria-pressed="true"] {
+  background: var(--ink);
+  color: white;
+}
+
+.dashboard-period-selector button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.dashboard-period-selector button:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+}
+
+.dashboard-kpi-card {
+  min-width: 0;
+  padding: var(--attendance-space-06) var(--attendance-space-07);
+  background: var(--surface);
+}
+
+.dashboard-kpi-card dt {
   color: var(--muted);
   font-size: 0.75rem;
   line-height: 1rem;
 }
 
-.dashboard-metrics dd {
+.dashboard-kpi-card dd {
   margin-top: var(--attendance-space-03);
   color: var(--ink);
   font-size: 2rem;
@@ -517,29 +575,120 @@ label[for]:focus-visible {
   line-height: 1;
 }
 
-.dashboard-events {
-  margin-top: var(--attendance-space-07);
-  border: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.dashboard-events-heading {
-  align-items: flex-start;
-  padding: var(--attendance-space-07);
-  border-bottom: 1px solid var(--border-strong);
-}
-
-.dashboard-events-heading h2,
-.dashboard-state h2 {
-  font-size: 1.25rem;
-}
-
-.dashboard-events-heading p,
-.dashboard-state p {
+.dashboard-kpi-card p {
   margin-top: var(--attendance-space-03);
   color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+.dashboard-quality-warning {
+  padding: var(--attendance-space-04) var(--attendance-space-07);
+  border-top: 1px solid var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.dashboard-target-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--attendance-space-03);
+}
+
+.dashboard-target-legend span {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.dashboard-trend-list {
+  margin: 0;
+  padding: var(--attendance-space-05) var(--attendance-space-07);
+  list-style: none;
+}
+
+.dashboard-trend-row {
+  min-height: 3.75rem;
+}
+
+.dashboard-trend-row + .dashboard-trend-row {
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-trend-label {
+  width: 12rem;
+  min-width: 0;
+}
+
+.dashboard-trend-label span,
+.dashboard-trend-label small,
+.dashboard-trend-value span {
+  display: block;
+}
+
+.dashboard-trend-label span {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-trend-label small,
+.dashboard-trend-value span {
+  margin-top: 0.125rem;
+  color: var(--muted);
+  font-size: 0.6875rem;
+}
+
+.dashboard-trend-track {
+  position: relative;
+  flex: 1;
+  height: 1rem;
+  overflow: hidden;
+  background: var(--subtle);
+}
+
+.dashboard-trend-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 0.125rem;
+  background: var(--action);
+}
+
+.dashboard-trend-baseline,
+.dashboard-trend-average {
+  position: absolute;
+  z-index: 1;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  width: 2px;
+  transform: translateX(-1px);
+}
+
+.dashboard-trend-baseline {
+  background: var(--ink);
+}
+
+.dashboard-trend-average {
+  background: var(--success-text);
+}
+
+.dashboard-trend-value {
+  width: 4rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.dashboard-trend-value strong {
+  color: var(--ink);
   font-size: 0.875rem;
-  line-height: 1.25rem;
 }
 
 .dashboard-semester + .dashboard-semester {
@@ -556,51 +705,67 @@ label[for]:focus-visible {
   font-size: 0.875rem;
 }
 
-.dashboard-event-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.dashboard-event-table-wrap {
+  overflow-x: auto;
 }
 
-.dashboard-event-row {
-  min-height: 4rem;
-  padding: var(--attendance-space-05) var(--attendance-space-07);
-}
-
-.dashboard-event-row + .dashboard-event-row {
-  border-top: 1px solid var(--border);
-}
-
-.dashboard-event-copy {
-  min-width: 0;
-}
-
-.dashboard-event-name,
-.dashboard-event-date {
-  display: block;
-}
-
-.dashboard-event-name {
-  overflow: hidden;
+.dashboard-event-table {
+  width: 100%;
+  min-width: 48rem;
+  border-collapse: collapse;
   color: var(--ink);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.dashboard-event-table th,
+.dashboard-event-table td {
+  padding: var(--attendance-space-04) var(--attendance-space-05);
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-event-table tr:last-child th,
+.dashboard-event-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.dashboard-event-table thead th {
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 0.6875rem;
   font-weight: 600;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dashboard-event-date {
-  margin-top: 0.125rem;
-  color: var(--muted);
-  font-size: 0.75rem;
+.dashboard-event-table th:first-child {
+  width: 100%;
+  padding-left: var(--attendance-space-07);
+  text-align: left;
 }
 
-.dashboard-event-attendance {
-  flex-shrink: 0;
-  padding: 0.25rem 0.5rem;
-  background: var(--success-bg);
+.dashboard-event-table th:first-child span,
+.dashboard-event-table th:first-child small {
+  display: block;
+}
+
+.dashboard-event-table th:first-child span {
+  font-weight: 600;
+}
+
+.dashboard-event-table th:first-child small {
+  margin-top: 0.125rem;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+
+.dashboard-event-table td:last-child,
+.dashboard-event-table th:last-child {
+  padding-right: var(--attendance-space-07);
+}
+
+.dashboard-positive {
   color: var(--success-text);
-  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -618,7 +783,7 @@ label[for]:focus-visible {
 
 .dashboard-loading-periods {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--attendance-space-07);
   margin-bottom: var(--attendance-space-09);
 }
@@ -637,6 +802,13 @@ label[for]:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (width < 66rem) {
+  .dashboard-kpis,
+  .dashboard-loading-periods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -689,28 +861,44 @@ label[for]:focus-visible {
     padding: var(--attendance-space-05);
   }
 
-  .dashboard-periods,
+  .dashboard-kpis,
   .dashboard-loading-periods {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-period + .dashboard-period {
-    border-top: 0;
-    border-left: 1px solid var(--border);
-  }
-
-  .dashboard-period,
-  .dashboard-events-heading,
+  .dashboard-section-heading,
   .dashboard-semester-heading,
-  .dashboard-event-row,
+  .dashboard-kpi-card,
+  .dashboard-trend-list,
   .dashboard-state,
   .dashboard-loading {
     padding-right: var(--attendance-space-05);
     padding-left: var(--attendance-space-05);
   }
 
-  .dashboard-event-row {
-    align-items: flex-start;
+  .dashboard-section-heading,
+  .dashboard-trend-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-period-selector {
+    align-self: flex-start;
+  }
+
+  .dashboard-target-legend {
+    justify-content: flex-start;
+  }
+
+  .dashboard-trend-label,
+  .dashboard-trend-value {
+    width: auto;
+    text-align: left;
+  }
+
+  .dashboard-trend-track {
+    width: 100%;
+    flex: none;
   }
 
   .attendance-footer {
